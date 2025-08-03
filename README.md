@@ -1,4 +1,6 @@
-# fleetsie - provision and manage a fleet of linux-based iot devices
+# fleetsie
+
+Simple tool to provision and manage a fleet of linux-based iot devices.
 
 ## Parts
 
