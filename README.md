@@ -26,7 +26,7 @@ sudo apt install xz-utils kpartx awk mergerfs
 - mounts all partitions in the image, as is done by the `fleetsie mount` command below
 
 ```sh
-  fleetsie mount OSNAME.img
+  fleetsiemod mount OSNAME.img
 ```
 
 - mounts each partition in `OSNAME.img` read-only to directory `.original_N`
@@ -36,7 +36,7 @@ if they do not already exist.
 - symlinks are created from the underlying partition labels to part_N; e.g. `bootfs -> part_1`
 
 ```sh
-  fleetsimod unmount OSNAME.img
+  fleetsiemod unmount OSNAME.img
 ```
 
 - unmounts the merged and original filesystems
