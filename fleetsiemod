@@ -1,0 +1,107 @@
+#!/bin/bash
+
+# fleetsiemod - manage the creation of a modified OS image to be used for the fleet
+
+function usage () {
+    cat <<EOF
+
+fleetsiemod - manage the creation of a modified OS image to be used for the fleet
+
+Commands:
+
+  fleetsiemod init PATH/OSNAME.img.xz
+
+- decompresses the image using xz and writes it to file OSNAME.img in the current directory
+- mounts all partitions in the image, as for the mount command below
+
+  fleetsie mount OSNAME.img
+- mounts each partition in OSNAME.img read-only to .original_N
+- creates an overlay mount for each partition; the merged mount is in part_N, where N is 1, 2, ...
+- other directories used in creating the overlays are .new_N and .work_N
+
+  fleetsimod unmount OSNAME.img
+- unmounts the overlay and original filesystems
+
+From an xz-compressed disk image,
+EOF
+    exit 1
+}
+
+# make_part_names defines symbols for
+# partitions/dirs used in mergerfs.
+# it is passed an integer 1...9 as $1
+function make_part_names () {
+	orig=.original_$1
+	merged=part_$1
+	upper=.new_$1
+}
+
+# get_num_parts sets np to the number of partitions
+# in the image passed as $1
+function get_num_parts () {
+    np=`sudo kpartx -l $1 | wc -l`
+}
+
+function init_image () {
+    if [[ ! "$1" =~ .img.xz$ ]]; then
+	echo "this doesn't look like an xz-compressed image file: $1"
+	exit 1
+    fi
+    image=`basename "$1"`
+    image=./${image%.xz}
+    echo Decompressing to "./$image"
+    xz -v --decompress --stdout "$1" > "$image"
+    mount $image
+}
+
+function mount () {
+    image="$1"
+    echo Mounting partitions in "$image"
+    i=1
+    for x in `sudo kpartx -av "$image" | awk '{print $3}'`; do
+	make_part_names $i
+	mkdir -p $orig $merged $upper
+	sudo mount -o ro /dev/mapper/$x $orig
+	pname=`sudo blkid -s LABEL -o value  /dev/mapper/$x`
+	sudo mergerfs -o defaults,allow_other,use_ino,category.create=epmfs $orig:$upper $merged
+	ln -s $merged $pname
+	echo -n "$pname: " && grep $merged /etc/mtab
+	i=$(( $i + 1 ))
+    done
+}
+
+function unmount () {
+    if [[ ! "$1" =~ .img$ || ! -f "$1" ]]; then
+	echo "this doesn't look like a disk image file: $1"
+	exit 1
+    fi
+    get_num_parts $1
+    for i in `seq 1 $np`; do
+	make_part_names $i
+	sudo umount $merged
+	sudo umount $orig
+    done
+    sudo kpartx -dv $1
+}
+
+verb=$1
+shift
+case $verb in
+    init) if [[ "$1" == "" ]]; then
+	      usage
+	  fi
+	  init_image "$*"
+	  ;;
+    mount) if [[ "$1" == "" ]]; then
+	       usage
+	   fi
+	   mount "$*"
+	   ;;
+    unmount) if [[ "$1" == "" ]]; then
+	      usage
+	  fi
+	  unmount "$*"
+	  ;;
+    *) usage
+	;;
+esac
