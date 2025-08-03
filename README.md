@@ -23,7 +23,7 @@ sudo apt install xz-utils kpartx awk mergerfs
 ```
 
 - decompresses the image using xz and writes it to file OSNAME.img in the current directory
-- mounts all partitions in the image, as for the mount command below
+- mounts all partitions in the image, as is done by the `fleetsie mount` command below
 
 ```sh
   fleetsie mount OSNAME.img
@@ -31,7 +31,8 @@ sudo apt install xz-utils kpartx awk mergerfs
 
 - mounts each partition in `OSNAME.img` read-only to directory `.original_N`
 - creates an overlay mount for each partition; the merged mount is in `part_N`, where N is 1, 2, ...
-- changes to the underlying image will be reflected in directories `.new_N`
+- changes to the underlying image will be reflected in directories `.new_N`; these are created
+if they do not already exist.
 - symlinks are created from the underlying partition labels to part_N; e.g. `bootfs -> part_1`
 
 ```sh
