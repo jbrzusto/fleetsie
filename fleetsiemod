@@ -116,7 +116,7 @@ function unmount_image () {
     get_image_name
     get_num_parts $image
     for i in `seq 1 $np`; do
-	make_part_names $image
+	make_part_names $i
 	sudo umount $merged
 	sudo umount $orig
     done
