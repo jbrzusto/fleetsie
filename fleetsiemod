@@ -79,7 +79,7 @@ function init_image () {
     make_part_names 1
     if [[ ! -d $upper_main ]]; then
 	git init $upper_main
-	printf "This directory holds overlain changes to partitions from $image\n" > $upper_main/README.md
+	printf "This directory holds overlain changes to partitions from `basename \"$image\"`\n" > $upper_main/README.md
 	printf "Created new git repo for your changes work in %s\n" $upper_main
     fi
     mount_image
