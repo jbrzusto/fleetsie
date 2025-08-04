@@ -97,6 +97,7 @@ function get_image_name () {
 }
 
 function mount_image () {
+    check_unmounted
     get_image_name
     echo Mounting partitions in "$image"
     i=1
@@ -111,9 +112,12 @@ function mount_image () {
 	echo -n "$pname: " && grep $merged /etc/mtab
 	i=$(( $i + 1 ))
     done
+    # flag that image is mouned
+    touch .mounted
 }
 
 function save_image () {
+    check_mounted
     get_image_name
     new_name="$1"
     new_image="${1%.xz}"
@@ -186,9 +190,22 @@ function save_image () {
     xz -v "${new_image}"
 }
 
+function check_mounted() {
+    if [[ ! -f .mounted ]]; then
+	printf "error: image is not mounted\n"
+	exit 1
+    fi
+}
 
+function check_unmounted() {
+    if [[ -f .mounted ]]; then
+	printf "error: image is already mounted\n"
+	exit 1
+    fi
+}
 
 function unmount_image () {
+    check_mounted
     get_image_name
     get_num_parts $image
     for i in `seq 1 $np`; do
@@ -197,8 +214,36 @@ function unmount_image () {
 	sudo umount $orig
     done
     sudo kpartx -dv $image
+    rm .mounted
 }
 
+# install_image installs the fleetsie components for the OS given in $1
+# onto the currently mounted partitions.
+function install_image () {
+    check_mounted
+    make_part_names
+    if [[ ! -d "$FLEETSIE_DIR/os/$1"  ]]; then
+	install_usage
+    fi
+    export TARGET_ROOT="$PWD"
+    cd "$FLEETSIE_DIR/os/$1/"
+    ./install || exit 1
+}
+
+# install usage lists the available options for 'install'
+function install_usage () {
+    cat <<EOF
+Usage: fleetsiemod install OS\n
+
+where OS is one of:
+EOF
+    for x in "`ls -1 $FLEETSIE_DIR/os`"; do
+	printf "\"%s\"\n" "$x"
+    done
+    exit 1
+}
+
+export FLEETSIE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 verb=$1
 shift
 case $verb in
@@ -218,7 +263,7 @@ case $verb in
 	if [[ "$1" =~ ^-*h(elp)? ]]; then
 	    install_usage
 	fi
-	os=${1:Raspberry Pi OS}
+	os="${1:-Raspberry Pi OS}"
 	shift
 	install_image "$os" "$*"
 	;;

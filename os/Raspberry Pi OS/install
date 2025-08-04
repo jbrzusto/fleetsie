@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# install - run as part of fleetsiemod when modifying a Raspberry Pi OS image
+#
+# This script must be run from the directory it lives in.
+# It assumes the target image partitions are mounted in the directory
+# given by environment variable TARGET_ROOT.  The partitions there must
+# be avilable via symlinks "bootfs" and "rootfs"
+
+BOOTFS=$TARGET_ROOT/bootfs
+ROOTFS=$TARGET_ROOT/rootfs
+SYSTEMD=$ROOTFS/etc/systemd/system
+
+cp ./fleetsie.service $SYSTEMD
+chown root:root $SYSTEMD/fleetsie.service
+chmod oug+x  $SYSTEMD/fleetsie.service
+ln -s /etc/systemd/system/fleetsie.service $SYSTEMD/multi-user.target.wants

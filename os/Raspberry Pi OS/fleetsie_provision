@@ -1,0 +1,49 @@
+#!/bin/bash
+
+# fleetsie_provision: provision this device using files on an attached USB drive
+
+# on a fatal error, we just flash the red LED
+function fatal() {
+    echo none > /sys/class/leds/ACT/trigger
+    echo 0 > /sys/class/leds/ACT/brightness
+    while true; do
+	echo 1 > /sys/class/leds/PWR/brightness
+	sleep .2
+	echo 0 > /sys/class/leds/PWR/brightness
+	sleep .2
+    done
+}
+
+# wait for systemctl to have brought up all the usual units
+systemctl is-system-running --wait
+
+# wait for a USB drive
+while true; do
+      if grep "sda[0-9]?$" /proc/partitions; then
+      	  break
+      fi
+      echo none > /sys/class/leds/ACT/trigger
+      echo 1 > /sys/class/leds/ACT/brightness
+      echo 1 > /sys/class/leds/PWR/brightness
+      sleep 1
+      echo 0 > /sys/class/leds/ACT/brightness
+      echo 0 > /sys/class/leds/PWR/brightness
+      sleep 1
+done
+
+mkdir /tmp/usb
+mounted=""
+for part in `grep sda[0-9]$ /proc/partitions | awk '{print $4}'`; do
+    if mount /dev/$part /tmp/usb; then
+	mounted=1
+	break
+    fi
+done
+if [[ ! "$mounted" ]]; then
+    fatal
+fi
+
+cd /tmp/usb
+if [[ ! -f "wifi.txt" || ! -f "otp.sqlite" ]]; then
+    fatal
+fi

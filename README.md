@@ -6,14 +6,21 @@ Simple tool to provision and manage a fleet of linux-based iot devices.
 
 **`fleetsiemod`**: modifies a stock OS image for use with `fleetsie`
 
-## Requirements
+**`fleetsie_provision`**: script which provisions the system by using the code, configuration and credentials
+supplied on an attached USB disk.  The script is intended to be run once, at provisioning time.
+
+**`fleetsie.service`**: systemd service that runs `fleetsie_provision` when the system is **stable**.
+The meaning of **stable** might depend on the OS.  Disables itself after a successful run of
+`fleetsie`.
+
+## `fleetsiemod` - Manage Creation of a Modified OS Image
+
+### Requirements
 The host where `fleetsiemod` is used to modify an OS image requires these packages:
 
 ```sh
 sudo apt install xz-utils kpartx awk unionfs-fuse
 ```
-
-## `fleetsiemod` - Manage Creation of a Modified OS Image
 
 ### Commands:
 
@@ -49,8 +56,10 @@ automatically restored the next time `fleetsie mount OSNAME.img` is run
   fleetsiemod install [OSTYPE]
 ```
 
-- uses instructions customized for `OSTYPE` to install `fleetsie` in the overlain OS image.
-- `OSTYPE` defaults to `Raspberry Pi OS`; do `fleetsiemod install --help` to list others.
+- uses instructions customized for `OSTYPE` to install
+  `fleetsie.service` and `fleetsie_provision` in the overlain OS
+  image.
+- `OSTYPE` defaults to `Raspberry Pi OS`; do `fleetsiemod install --help` to list other options, if any.
 - after this command, you can make any further customizations to the image by manipulating files
 in the `part_N` directories
 - do `fleetsiemod save` to create a new installable image that includes `fleetsie` and your changes
@@ -63,3 +72,21 @@ in the `part_N` directories
 - if `NEW_IMAGE_NAME` is omitted, it defaults to `OSNAME_fleetsie.img.xz`,
 - normally, you would only do `fleetsiemod save` after doing `fleetsiemod install`
 and, optionally, making further changes to the `part_N` directories
+
+## fleetsie.service
+
+- installed and enabled by `fleetsiemod` on the OS image
+- once the system is **stable**, runs the `fleetsie` script, which is also installed by `fleetsiemod`
+- if `fleetsie` exits with success, `fleetsie.service` disables itself.
+
+## fleetsie_provision
+
+- installed into /usr/bin by `fleetsiemod` on the OS image
+- run by the `fleetsie.service` which is also installed and enabled there
+- only runs when the system is **stable**
+- is disabled from running after the first successful run
+
+- searches for a script to run on an attached USB disk.
+- the script must be called `setup` and must be in a top-level directory called `fleetsie` on the USB disk
+- after switching to the top-level `fleetsie` directory on the disk, the script is run as root
+- if the script run is successful, `fleetsie.service` will disable itself.
