@@ -5,34 +5,45 @@
 function usage () {
     # usage below is copied from the `fleetsiemod` section of README.md
     cat <<EOF
-## `fleetsiemod` - Manage Creation of a Modified OS Image
+## 'fleetsiemod' - Manage Creation of a Modified OS Image
 
 ### Commands:
 
-```sh
   fleetsiemod init PATH/OSNAME.img.xz
-```
 
 - decompresses the image using xz and writes it to file OSNAME.img in the current directory
-- mounts all partitions in the image, as for the mount command below
+- mounts all partitions in the image, as is done by the 'fleetsie mount' command below
+- creates a symlink from '.image -> OSNAME.img'
+- initializes a git repo in 'my_work', where overlays for each of the partitions in 'OSNAME.img'
+will be created, so that you can use version control to track your work.
 
-```sh
-  fleetsie mount OSNAME.img
-```
+  fleetsiemod mount
 
-- mounts each partition in `OSNAME.img` read-only to directory `.original_N`
-- creates an overlay mount for each partition; the merged mount is in `part_N`, where N is 1, 2, ...
-- changes to the underlying image will be reflected in directories `.new_N`
-- symlinks are created from the underlying partition labels to part_N; e.g. `bootfs -> part_1`
+- mounts each partition in 'OSNAME.img' read-only to directory 'original/part_N'
+- creates an overlay mount for each partition; the merged mount is in 'part_N', where N is 1, 2, ...
+- changes to the underlying image will be reflected in directories '.new_N'; these are created
+if they do not already exist.
+- symlinks are created from the underlying partition labels to part_N; e.g. 'bootfs -> part_1'
 
-```sh
-  fleetsimod unmount OSNAME.img
-```
+  fleetsiemod unmount
 
 - unmounts the merged and original filesystems
-- changes made remain available in the `.new_N` directories and will be
-automatically restored the next time `fleetsie mount OSNAME.img` is run
+- changes made remain available in the '.new_N' directories and will be
+automatically restored the next time 'fleetsie mount OSNAME.img' is run
 
+  fleetsiemod install [OSTYPE]
+
+- uses instructions customized for 'OSTYPE' to install 'fleetsie' in the overlain OS image.
+- 'OSTYPE' defaults to 'Raspberry Pi OS'; do 'fleetsiemod install --help' to list others.
+- after this command, you can make any further customizations to the image by manipulating files
+in the 'part_N' directories
+- do 'fleetsiemod save' to create a new installable image that includes 'fleetsie' and your changes
+
+  fleetsiemod save [NEW_IMAGE_NAME]
+- writes the filesystem with your changes to a new, xz-compressed image
+- if 'NEW_IMAGE_NAME' is omitted, it defaults to 'OSNAME_fleetsie.img',
+- normally, you would only do 'fleetsiemod save' after doing 'fleetsiemod install'
+and, optionally, making further changes to the 'part_N' directories
 EOF
     exit 1
 }
@@ -41,9 +52,12 @@ EOF
 # partitions/dirs used in mergerfs.
 # it is passed an integer 1...9 as $1
 function make_part_names () {
-	orig=.original_$1
-	merged=part_$1
-	upper=.new_$1
+    orig_main=original
+    merged_main=merged
+    upper_main=my_work
+    orig=${orig_main}/part_$1
+    merged=${merged_main}/part_$1
+    upper=${upper_main}/part_$1
 }
 
 # get_num_parts sets np to the number of partitions
@@ -61,11 +75,27 @@ function init_image () {
     image=./${image%.xz}
     echo Decompressing to "./$image"
     xz -v --decompress --stdout "$1" > "$image"
-    mount $image
+    ln -s "$image" .image
+    make_part_names 1
+    if [[ ! -d $upper_main ]]; then
+	git init $upper_main
+	printf "This directory holds overlain changes to partitions from $image\n" > $upper_main/README.md
+	printf "Created new git repo for your changes work in %s\n" $upper_main
+    fi
+    mount_image
 }
 
-function mount () {
-    image="$1"
+function get_image_name () {
+    if [[ -L .image ]]; then
+	image=`readlink .image`
+	return
+    fi
+    printf "Error: you need to use fleetsiemod init ... to start working on an image\n"
+    exit 1
+}
+
+function mount_image () {
+    get_image_name
     echo Mounting partitions in "$image"
     i=1
     for x in `sudo kpartx -av "$image" | awk '{print $3}'`; do
@@ -81,18 +111,15 @@ function mount () {
     done
 }
 
-function unmount () {
-    if [[ ! "$1" =~ .img$ || ! -f "$1" ]]; then
-	echo "this doesn't look like a disk image file: $1"
-	exit 1
-    fi
-    get_num_parts $1
+function unmount_image () {
+    get_image_name
+    get_num_parts $image
     for i in `seq 1 $np`; do
-	make_part_names $i
+	make_part_names $image
 	sudo umount $merged
 	sudo umount $orig
     done
-    sudo kpartx -dv $1
+    sudo kpartx -dv $image
 }
 
 verb=$1
@@ -106,12 +133,12 @@ case $verb in
     mount) if [[ "$1" == "" ]]; then
 	       usage
 	   fi
-	   mount "$*"
+	   mount_image "$*"
 	   ;;
     unmount) if [[ "$1" == "" ]]; then
 	      usage
 	  fi
-	  unmount "$*"
+	  unmount_image "$*"
 	  ;;
     *) usage
 	;;
