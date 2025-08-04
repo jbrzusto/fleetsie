@@ -104,7 +104,7 @@ function mount_image () {
 	sudo mount -o ro /dev/mapper/$x $orig
 	pname=`sudo blkid -s LABEL -o value  /dev/mapper/$x`
 	sudo mergerfs -o defaults,allow_other,use_ino,category.create=epmfs $orig:$upper $merged
-	rm $pname
+	rm -f $pname
 	ln -s $merged $pname
 	echo -n "$pname: " && grep $merged /etc/mtab
 	i=$(( $i + 1 ))
