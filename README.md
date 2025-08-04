@@ -11,7 +11,7 @@ Simple tool to provision and manage a fleet of linux-based iot devices.
 The host where `fleetsiemod` is used to modify an OS image requires these packages:
 
 ```sh
-sudo apt install xz-utils kpartx awk mergerfs
+sudo apt install xz-utils kpartx awk unionfs-fuse
 ```
 
 ## `fleetsiemod` - Manage Creation of a Modified OS Image
@@ -61,6 +61,6 @@ in the `part_N` directories
 ```
 
 - writes the filesystem with your changes to a new, xz-compressed image
-- if `NEW_IMAGE_NAME` is omitted, it defaults to `OSNAME_fleetsie.img`,
+- if `NEW_IMAGE_NAME` is omitted, it defaults to `OSNAME_fleetsie.img.xz`,
 - normally, you would only do `fleetsiemod save` after doing `fleetsiemod install`
 and, optionally, making further changes to the `part_N` directories

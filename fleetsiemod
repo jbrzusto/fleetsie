@@ -50,7 +50,7 @@ EOF
 }
 
 # make_part_names defines symbols for
-# partitions/dirs used in mergerfs.
+# partitions/dirs used in unionfs.
 # it is passed an integer 1...9 as $1
 function make_part_names () {
     orig_main=original
@@ -89,6 +89,7 @@ function init_image () {
 function get_image_name () {
     if [[ -L .image ]]; then
 	image=`readlink .image`
+	image_root=${image%.img}
 	return
     fi
     printf "Error: you need to use fleetsiemod init ... to start working on an image\n"
@@ -104,13 +105,88 @@ function mount_image () {
 	mkdir -p $orig $merged $upper
 	sudo mount -o ro /dev/mapper/$x $orig
 	pname=`sudo blkid -s LABEL -o value  /dev/mapper/$x`
-	sudo mergerfs -o defaults,allow_other,use_ino,category.create=epmfs $orig:$upper $merged
+	sudo unionfs -o cow -o hide_meta_files $upper=RW:$orig=RO $merged
 	rm -f $pname
 	ln -s $merged $pname
 	echo -n "$pname: " && grep $merged /etc/mtab
 	i=$(( $i + 1 ))
     done
 }
+
+function save_image () {
+    get_image_name
+    new_name="$1"
+    new_image="${1%.xz}"
+    # create a file of zeros with the same size as the original image
+    rm -f "$new_image"
+    size=`stat -Lc %s .image`
+    printf "Creating zeroed image of size %s bytes\n" $size
+    dd if=/dev/zero of="$new_image" bs=1M count=$(( $size / (1024 * 1024) ))
+    set -euo pipefail
+
+    # clone the partition table and filesystems from original image
+    # to new one
+    SRC_IMG="$image"
+    DST_IMG="$new_image"
+
+    # 1. Associate loop devices (with partition scanning)
+    LOOP_SRC=$(losetup --show -fP "${SRC_IMG}")
+    LOOP_DST=$(losetup --show -fP "${DST_IMG}")
+
+    # 2. Clone partition table
+    printf "Cloning partition table from $LOOP_SRC to $LOOP_DST\n"
+    sfdisk -d "${LOOP_SRC}" | sfdisk "${LOOP_DST}"
+
+    # 3. Re-scan partitions on the target loop device
+    printf "Rescanning partition table on $LOOP_DST\n"
+    partprobe "${LOOP_DST}"
+
+    # 4. For each new partition on the target, detect its type and mkfs,
+    #    and mount on .new_image/part_pN
+    mkdir -p .new_image
+    i=1
+    for SRCPART in $(ls "${LOOP_SRC}"p*); do
+	TYPE=$(blkid -s TYPE -o value "${SRCPART}" || true)
+	PART=${SRCPART/$LOOP_SRC/$LOOP_DST}
+	case "${TYPE}" in
+	    ext2|ext3|ext4)
+		mkfs."${TYPE}" -F "${PART}"
+		;;
+	    xfs)
+		mkfs.xfs -f "${PART}"
+		;;
+	    vfat)
+		mkfs.vfat "${PART}"
+		;;
+	    ntfs)
+		mkfs.ntfs -F "${PART}"
+		;;
+	    swap)
+		mkswap "${PART}"
+		;;
+	    *)
+		echo "Warning: unsupported or unknown type '${TYPE}' on ${PART}, skipping"
+		continue
+		;;
+	esac
+	mkdir -p .new_image/part_$i
+	sudo mount ${PART} .new_image/part_$i
+	make_part_names $i
+	printf "Doing rsync -a from $merged to .new_image/part_$i\n"
+	sudo rsync -a "$merged/" .new_image/part_$i/ || true
+	sudo umount ${PART}
+	i=$(( $i + 1 ))
+    done
+
+    # 5. Detach loop devices
+    losetup -d "${LOOP_SRC}"
+    losetup -d "${LOOP_DST}"
+
+    printf "Compressing to ${new_image}.xz\n"
+    xz -v "${new_image}"
+}
+
+
 
 function unmount_image () {
     get_image_name
@@ -126,15 +202,36 @@ function unmount_image () {
 verb=$1
 shift
 case $verb in
-    init) if [[ "$1" == "" ]]; then
-	      usage
-	  fi
-	  init_image "$*"
-	  ;;
-    mount) mount_image "$*"
-	   ;;
-    unmount) unmount_image "$*"
-	  ;;
-    *) usage
+    init)
+	if [[ "$1" == "" ]]; then
+	    usage
+	fi
+	init_image "$*"
 	;;
+    mount)
+	mount_image "$*"
+	;;
+    unmount)
+	unmount_image "$*"
+	;;
+    install)
+	if [[ "$1" =~ ^-*h(elp)? ]]; then
+	    install_usage
+	fi
+	os=${1:Raspberry Pi OS}
+	shift
+	install_image "$os" "$*"
+	;;
+    save)
+	if [[ "$1" == "" ]]; then
+	    get_image_name
+	    iname="${image_root}_fleetsie.img.xz"
+	else
+	    iname="$1"
+	fi
+	shift
+	save_image "$iname" "$*"
+	;;
+    *) usage
+       ;;
 esac
