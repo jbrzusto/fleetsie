@@ -59,6 +59,7 @@ in the `part_N` directories
 ```sh
   fleetsiemod save [NEW_IMAGE_NAME]
 ```
+
 - writes the filesystem with your changes to a new, xz-compressed image
 - if `NEW_IMAGE_NAME` is omitted, it defaults to `OSNAME_fleetsie.img`,
 - normally, you would only do `fleetsiemod save` after doing `fleetsiemod install`

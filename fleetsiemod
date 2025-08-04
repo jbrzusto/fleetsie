@@ -40,6 +40,7 @@ in the 'part_N' directories
 - do 'fleetsiemod save' to create a new installable image that includes 'fleetsie' and your changes
 
   fleetsiemod save [NEW_IMAGE_NAME]
+
 - writes the filesystem with your changes to a new, xz-compressed image
 - if 'NEW_IMAGE_NAME' is omitted, it defaults to 'OSNAME_fleetsie.img',
 - normally, you would only do 'fleetsiemod save' after doing 'fleetsiemod install'
