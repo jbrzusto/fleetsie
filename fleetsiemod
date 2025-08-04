@@ -131,15 +131,9 @@ case $verb in
 	  fi
 	  init_image "$*"
 	  ;;
-    mount) if [[ "$1" == "" ]]; then
-	       usage
-	   fi
-	   mount_image "$*"
+    mount) mount_image "$*"
 	   ;;
-    unmount) if [[ "$1" == "" ]]; then
-	      usage
-	  fi
-	  unmount_image "$*"
+    unmount) unmount_image "$*"
 	  ;;
     *) usage
 	;;
