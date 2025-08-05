@@ -190,7 +190,7 @@ function save_image () {
 	sudo mount ${PART} .new_image/part_$i
 	make_part_names $i
 	printf "Doing rsync -a from $merged to .new_image/part_$i\n"
-	sudo rsync -a "$merged/" .new_image/part_$i/ || true
+	safe_rsync "$merged/" .new_image/part_$i/ -a || true
 	sudo umount ${PART}
 	i=$(( $i + 1 ))
     done
@@ -241,9 +241,17 @@ function update_sd () {
 	    exit 1
 	fi
 	mp=`findmnt -no TARGET /dev/$p`
+	if [[ "$mp" == "" ]]; then
+	    mp=`mktemp -d`
+	    if [[ ! sudo mount /dev/$p $mp ]]; then
+		printf "warning: unable to mount /dev/$p; aborting update_sd\n"
+		exit 2
+	    fi
+	    printf "mounted /dev/$p on $mp"
+	fi
 	make_part_names $i
 	printf "doing rsync -a $merged/ $mp/\n"
-	if ! sudo rsync -a $merged/ $mp/; then
+	if ! safe_rsync $merged/ $mp/ -a; then
 	    break
 	fi
 	printf "rsync successful; unmounting %s\n" $mp
@@ -263,6 +271,35 @@ function install_image () {
     cd "$FLEETSIE_DIR/os/$1/"
     ./install || exit 1
 }
+
+# safe_rsync rsyncs $1 to $2 with options in $3, $4, ...
+# but prompts the user and makes sure that $2 is either in /media
+# or below the CWD.
+function safe_rsync () {
+    SRC="$1"
+    DST="$2"
+    shift 2
+    OPTS="$*"
+    OK=""
+    if [[ `cd $DST && pwd` =~ ^$PWD || $DST =~ ^/media ]]; then
+	# destination folder is below current directory or somewhere mounted in /media
+	OK=1
+    fi
+    if [[ ! $OK ]]; then
+	printf "error: refusing to do dangerous rsync with target=$DST\n"
+	exit 2
+    fi
+    echo "Are you sure you want to do rsync $OPTS $SRC $DST ?\n"
+    read x
+    RESP=${x:0:1}
+    if [[ $RESP != "y" && $RESP != "Y" ]]; then
+	printf 'rsync cancelled!  not doing rest of command\n'
+	exit 3
+    fi
+    rsync $OPTS "$SRC" "$DST"
+}
+
+
 
 # install usage lists the available options for 'install'
 function install_usage () {
