@@ -45,6 +45,19 @@ in the 'part_N' directories
 - if 'NEW_IMAGE_NAME' is omitted, it defaults to 'OSNAME_fleetsie.img',
 - normally, you would only do 'fleetsiemod save' after doing 'fleetsiemod install'
 and, optionally, making further changes to the 'part_N' directories
+
+  fleetsiemod updatesd DEVPART1 DEVPART2 ...
+
+- updates the filesystem partitions on an attached SD card from the current image
+- 'DEVPART1' is updated from the partition 1 (at 'merged/part_1')
+- 'DEVPART2' is updated from the partition 2 (at 'merged/part_2')
+- and so on...
+- don't include the "/dev/" in DEVPARTN
+- example:  fleetsiemod updatesd sdc1 sdc2
+
+This can be useful for testing the provisioning code, by avoiding having to completely rewrite
+the SD card each time.
+
 EOF
     exit 1
 }
@@ -217,6 +230,27 @@ function unmount_image () {
     rm .mounted
 }
 
+function update_sd () {
+    check_mounted
+    get_image_name
+    get_num_parts $image
+    for i in `seq 1 $np`; do
+	p=${!i}
+	if [[ $p == "" ]]; then
+	    printf "not enough device partitions given:  missing #%d\n" $i
+	    exit 1
+	fi
+	mp=`findmnt -no TARGET /dev/$p`
+	make_part_names $i
+	printf "doing rsync -a $merged/ $mp/\n"
+	if ! sudo rsync -a $merged/ $mp/; then
+	    break
+	fi
+	printf "rsync successful; unmounting %s\n" $mp
+	sudo umount $mp
+    done
+}
+
 # install_image installs the fleetsie components for the OS given in $1
 # onto the currently mounted partitions.
 function install_image () {
@@ -276,6 +310,19 @@ case $verb in
 	fi
 	shift
 	save_image "$iname" "$*"
+	;;
+    updatesd)
+	for dp in $*; do
+	    if [[ "$dp" == "" ]]; then
+		usage
+	    fi
+	    if ! grep -E " ${dp}\$" /proc/partitions >/dev/null; then
+		printf "error: /dev/$dp is really not a disk partition\n"
+		echo doing exit 2 now
+		exit 2
+	    fi
+	done
+	update_sd $*
 	;;
     *) usage
        ;;

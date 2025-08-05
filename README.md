@@ -73,6 +73,17 @@ in the `part_N` directories
 - normally, you would only do `fleetsiemod save` after doing `fleetsiemod install`
 and, optionally, making further changes to the `part_N` directories
 
+```sh
+  fleetsiemod updatesd DEVPART1 DEVPART2 ...
+```
+
+- updates the filesystem partitions on an attached SD card from the current image
+- `DEVPART1` is updated from the partition 1 (at `merged/part_1`)
+- `DEVPART2` is updated from the partition 2 (at `merged/part_2`)
+- and so on...
+- don't include the `/dev/` in `DEVPARTN`
+- example:  `fleetsiemod updatesd sdc1 sdc2`
+
 ## fleetsie.service
 
 - installed and enabled by `fleetsiemod` on the OS image
