@@ -120,7 +120,7 @@ fi
 if [[ ! -f fleet.txt ]]; then
     fatal "can't find fleetsie/fleet.txt on USB disk\nfirst line should be fleet server hostname; e.g. whoflewby.org\nsecond line should be fleet name; e.g. ampi\n"
 fi
-{read FLEETHOST && read FLEETNAME; } < fleetsie/fleet.txt
+{ read FLEETHOST && read FLEETNAME && read FLEETKNOWNHOST; } < fleetsie/fleet.txt
 if [[ ! $FLEETHOST ]]; then
 	fatal "can't read fleet host name from line 1 of fleetsie/fleet.txt file on USB disk"
 fi
@@ -128,13 +128,18 @@ if [[ ! $FLEETNAME ]]; then
 	fatal "can't read fleet name from line 2 of fleetsie/fleet.txt file on USB disk"
 fi
 
-if [[ ! -f fleetsieauth.pub || ! -f fleetsieauth || ! -f known_hosts || ! -f otp.sqlite ]]; then
-    fatal "can't find one or more files needed for connecting to fleet server.\nneed:\nfleetsieauth.pub\nfleetsieauth\nknown_hosts\notp.sqlite\n"
+if [[ ! $FLEETKNOWNHOST ]]; then
+	fatal "can't read known_hosts line for fleet host from from line 3 of fleetsie/fleet.txt file on USB disk"
+fi
+
+
+if [[ ! -f fleetsieauth.pub || ! -f fleetsieauth || ! -f otp.sqlite ]]; then
+    fatal "can't find one or more files needed for connecting to fleet server.\nneed:\nfleetsieauth.pub\nfleetsieauth\notp.sqlite\n"
 fi
 
 info "appending known_hosts from USB drive to /root/.ssh/known_hosts"
 mkdir -p /root/.ssh
-cat known_hosts >> /root/.ssh/known_hosts
+echo "$FLEETKNOWNHOST" >> /.ssh/known_hosts
 cp  fleetsieauth.pub fleetsieauth /root/.ssh/
 chmod oug+r /root/.ssh/fleetsieauth.pub
 chmod og-rw /root/.ssh/fleetsieauth
@@ -149,17 +154,36 @@ while true; do
     if [[ "$otp" == "" ]]; then
 	fatal "no passwords left in otp.sqlite - contact an administrator for more"
     fi
-    if !  printf "%s %s %s\n" $$SERNO $OTP $FLEETNAME | ssh -oStrictHostKeyChecking=true fleetsie@$FLEETHOST > $REPLY_FILE 2> $ERROR_FILE; then
+    if !  printf "%s %s %s\n" $$SERNO $OTP $FLEETNAME | \
+	    ssh -oStrictHostKeyChecking=true fleetsie@$FLEETHOST \
+		> $REPLY_FILE 2> $ERROR_FILE; then
 	fatal "error trying to ssh to $FLEETHOST: `cat ERROR_FILE`"
     fi
-    read rv < $REPLY_FILE
-    case $rv in
-	bad)
-	    info "server $FLEETHOST report OTP=$OTP is bad; skipping to next"
-	    ;;
-	skip)
+    {
+	read rv
+	case $rv in
+	    bad)
+		info "server $FLEETHOST reports OTP=$OTP is bad; trying next OTP"
+		;;
+	    try)
+		read OTPNUM
+		# mark earlier OTPs as no longer valid
+		sqlite3 otp.sqlite "update otp set used=1 where id < $OTPNUM;"
+		info "server $FLEETHOST suggests trying OTP # $OTPNUM"
+		;;
+	    error)
+		read ERRMSG
+		fatal "server $FLEETHOST reported this error: $ERRMSG"
+		;;
+	    ok)
+		if ! read HOSTNAME && read PORT && read PUBKEY && read PRIVKEY; then
+		    fatal "server $FLEETHOST gave bad reply: $HOSTNAME,$PORT,$PUBKEY,$PRIVKEY"
+		fi
+		echo $HOSTNAME /etc/hostname
 
 
+	esac
+    } < $REPLY_FILE
 
 
 

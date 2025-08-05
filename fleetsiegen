@@ -1,0 +1,47 @@
+#!/bin/bash
+
+# fleetsiegen - create a template provisioning disk for fleetsie
+
+function usage () {
+    # usage below is copied from the `fleetsiegen` section of README.md
+    cat <<EOF
+## 'fleetsiegen' - generate a template for a fleetsie provisioning disk
+
+fleetsiegen creates files on a USB drive and on the fleet server such
+that a number of devices can be provisioned (using the USB drive) with
+access to the server.
+
+Here's the filesystem layout of the USB drive fleetsiegen creates:
+
+  /fleetsie
+   - top-level folder
+
+  /fleetsie/wifi.txt
+
+   - file containing essids and passwords for wifi networks, one per
+     line i.e. line 1 = ESSID1, line 2 = password1, line 3 = ESSID2,
+     line 3 = password2, ...  During provisioning, the device will
+     attempt to connect to wifi using these credentials, one set at a
+     time, until a connection succeeds.
+
+  /fleetsie/fleet.txt
+
+   - file containing the fleet hostname on line 1, and the fleet name on line 2
+
+  /fleetsie/fleetsieauth.pub
+  /fleetsie/fleetsieauth
+
+   - ssh keys used to login to the fleet server at provisioning time; on the server,
+     ssh is configured so that logging in with these keys runs the server-side
+     provisioning code.  No other use for these keys is permitted by the server.
+
+  /fleetsie/ssh-tunnel.service
+  /fleetsie/ssh_tunnel.sh
+
+   - systemd service and script it runs to maintain a ssh connection to the fleet server,
+     with a port mapped from the server back to the local ssh server; also maintains
+     a local port which maps to the zabbix data port on the fleet server.
+
+EOF
+    exit 1
+}
