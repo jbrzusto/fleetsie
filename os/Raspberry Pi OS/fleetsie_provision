@@ -2,8 +2,14 @@
 
 # fleetsie_provision: provision this device using files on an attached USB drive
 
-# on a fatal error, we just flash the red LED
+# on a fatal error, write any supplied arguments to $LOGFILE if defined,
+# and then just flash the red LED
 function fatal() {
+    if [[ "$LOGFILE" ]]; then
+	echo "$*" >> $LOGFILE
+	echo >> $lOGFILE
+	sync
+    fi
     echo none > /sys/class/leds/ACT/trigger
     echo 0 > /sys/class/leds/ACT/brightness
     while true; do
@@ -12,6 +18,24 @@ function fatal() {
 	echo 0 > /sys/class/leds/PWR/brightness
 	sleep .2
     done
+}
+
+# on a warning, write any supplied arguments to $LOGFILE, if defined
+function warning() {
+    if [[ "$LOGFILE" ]]; then
+	echo "warning: $*" >> $LOGFILE
+	echo >> $lOGFILE
+	sync
+    fi
+}
+
+# on info, write any supplied arguments to $LOGFILE, if defined
+function warning() {
+    if [[ "$LOGFILE" ]]; then
+	echo "$*" >> $LOGFILE
+	echo >> $lOGFILE
+	sync
+    fi
 }
 
 # wait for systemctl to have brought up all the usual units
@@ -34,7 +58,8 @@ done
 mkdir /tmp/usb
 mounted=""
 for part in `grep sda[0-9]$ /proc/partitions | awk '{print $4}'`; do
-    if mount /dev/$part /tmp/usb; then
+    tmp=`mktemp -d`
+    if mount /dev/$part $tmp; then
 	mounted=1
 	break
     fi
@@ -43,7 +68,105 @@ if [[ ! "$mounted" ]]; then
     fatal
 fi
 
-cd /tmp/usb
-if [[ ! -f "wifi.txt" || ! -f "otp.sqlite" ]]; then
-    fatal
+cd $tmp
+LOGFILE="fleetsie_provisioning_log.txt"
+printf "\nprovisioning started at %s\n" `date` >> $LOGFILE
+
+## check for fleetsie directory
+if [[ ! -d fleetsie ]]; then
+    fatal "can't find fleetsie directory on USB disk"
+fi
+
+cd fleetsie
+
+## try provision wifi
+if [[ ! -f "wifi.txt" ]]; then
+    fatal "can't find fleetsie/wifi.txt on USB disk\nfirst line should be the WiFi network name (ESSID), second line should be the WiFi password"
+fi
+con=""
+{
+    while true; do
+	if ! read ESSID; then
+	    break
+	fi
+	if ! read PASSWD; then
+	    info "wifi.txt is missing a password line for $ESSID"
+	    break
+	fi
+	CMD="nmcli device wifi con \"$ESSID\" password \"$PASSWD\""
+	read CONRES < <( bash -c "$CMD" 2>&1)
+	if [[ "$CONRES" =~ "successfully activated" ]]; then
+            info "Connected WiFi to $ESSID"
+	    con=1
+	    break
+	else
+            info "Could not connect WiFi to $ESSID; error was $CONRES"
+	fi
+    done
+ } < wifi.txt
+
+if [[ $con != 1 ]]; then
+    fatal "unable to connect to any WiFi networks given in wifi.txt"
+fi
+
+if ! sqlite3 < /dev/null; then
+    info "updating apt and installing sqlite3"
+    if [[ ! apt update && apt install sqlite3 ]]; then
+	fatalf "unable to install sqlite3"
+    fi
+fi
+
+## try get ssh keys for fleet server
+if [[ ! -f fleet.txt ]]; then
+    fatal "can't find fleetsie/fleet.txt on USB disk\nfirst line should be fleet server hostname; e.g. whoflewby.org\nsecond line should be fleet name; e.g. ampi\n"
+fi
+{read FLEETHOST && read FLEETNAME; } < fleetsie/fleet.txt
+if [[ ! $FLEETHOST ]]; then
+	fatal "can't read fleet host name from line 1 of fleetsie/fleet.txt file on USB disk"
+fi
+if [[ ! $FLEETNAME ]]; then
+	fatal "can't read fleet name from line 2 of fleetsie/fleet.txt file on USB disk"
+fi
+
+if [[ ! -f fleetsieauth.pub || ! -f fleetsieauth || ! -f known_hosts || ! -f otp.sqlite ]]; then
+    fatal "can't find one or more files needed for connecting to fleet server.\nneed:\nfleetsieauth.pub\nfleetsieauth\nknown_hosts\notp.sqlite\n"
+fi
+
+info "appending known_hosts from USB drive to /root/.ssh/known_hosts"
+mkdir -p /root/.ssh
+cat known_hosts >> /root/.ssh/known_hosts
+cp  fleetsieauth.pub fleetsieauth /root/.ssh/
+chmod oug+r /root/.ssh/fleetsieauth.pub
+chmod og-rw /root/.ssh/fleetsieauth
+
+info "sshing to fleet server $FLEETHOST"
+
+SERNO=`cat /sys/class/net/eth0/address`
+REPLY_FILE=/tmp/fleetsieauth.txt
+ERROR_FILE=/tmp/fleetsieauth.err
+while true; do
+    otp=`sqlite3 otp.sqlite "select otp from otp where used=0 order by id limit 1"`
+    if [[ "$otp" == "" ]]; then
+	fatal "no passwords left in otp.sqlite - contact an administrator for more"
+    fi
+    if !  printf "%s %s %s\n" $$SERNO $OTP $FLEETNAME | ssh -oStrictHostKeyChecking=true fleetsie@$FLEETHOST > $REPLY_FILE 2> $ERROR_FILE; then
+	fatal "error trying to ssh to $FLEETHOST: `cat ERROR_FILE`"
+    fi
+    read rv < $REPLY_FILE
+    case $rv in
+	bad)
+	    info "server $FLEETHOST report OTP=$OTP is bad; skipping to next"
+	    ;;
+	skip)
+
+
+
+
+
+
+if [[ -f customize ]]; then
+    info "running customize script"
+    . ./customize
+else
+    info "no customize script found.  All done"
 fi

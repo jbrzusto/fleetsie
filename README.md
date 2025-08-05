@@ -101,3 +101,12 @@ and, optionally, making further changes to the `part_N` directories
 - the script must be called `setup` and must be in a top-level directory called `fleetsie` on the USB disk
 - after switching to the top-level `fleetsie` directory on the disk, the script is run as root
 - if the script run is successful, `fleetsie.service` will disable itself.
+
+
+## ssh-tunnel service
+
+`fleetsie` uses ssh to connect devices to the fleet host.  During
+provisioning, each device is assigned a unique set of ssh keys for
+logging into the fleet host, and a unique tunnel port number.  The
+`ssh-tunnel` service will maintain a reverse tunnel from that port on
+the fleet host to its local ssh port (22).
