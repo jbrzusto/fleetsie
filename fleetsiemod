@@ -243,7 +243,7 @@ function update_sd () {
 	mp=`findmnt -no TARGET /dev/$p`
 	if [[ "$mp" == "" ]]; then
 	    mp=`mktemp -d`
-	    if [[ ! sudo mount /dev/$p $mp ]]; then
+	    if ! sudo mount /dev/$p $mp; then
 		printf "warning: unable to mount /dev/$p; aborting update_sd\n"
 		exit 2
 	    fi
@@ -251,10 +251,8 @@ function update_sd () {
 	fi
 	make_part_names $i
 	printf "doing rsync -a $merged/ $mp/\n"
-	if ! safe_rsync $merged/ $mp/ -a; then
-	    break
-	fi
-	printf "rsync successful; unmounting %s\n" $mp
+	safe_rsync $merged/ $mp/ -a || true
+	printf "rsync done - check for errors, though; unmounting %s\n" $mp
 	sudo umount $mp
     done
 }
@@ -289,14 +287,14 @@ function safe_rsync () {
 	printf "error: refusing to do dangerous rsync with target=$DST\n"
 	exit 2
     fi
-    echo "Are you sure you want to do rsync $OPTS $SRC $DST ?\n"
+    printf "Are you sure you want to do rsync $OPTS $SRC $DST\n(y/N)? "
     read x
     RESP=${x:0:1}
     if [[ $RESP != "y" && $RESP != "Y" ]]; then
 	printf 'rsync cancelled!  not doing rest of command\n'
 	exit 3
     fi
-    rsync $OPTS "$SRC" "$DST"
+    sudo rsync $OPTS "$SRC" "$DST"
 }
 
 
