@@ -179,7 +179,21 @@ while true; do
 		if ! read HOSTNAME && read PORT && read PUBKEY && read PRIVKEY; then
 		    fatal "server $FLEETHOST gave bad reply: $HOSTNAME,$PORT,$PUBKEY,$PRIVKEY"
 		fi
-		echo $HOSTNAME /etc/hostname
+		info "setting hostname to $HOSTNAME"
+		echo "$HOSTNAME" /etc/hostname
+		info "saving ssh keys for access to $HOSTNAME"
+		mkdir -p /home/pi/.ssh
+		echo "$PORT" > /home/pi/.ssh/fleetsie_tunnel_port
+		echo "$PUBKEY" > /home/pi/.ssh/fleetsie.pub
+		echo "$PRIVKEY" > /home/pi/.ssh/fleetsie
+		echo "$FLEETKNOWNHOST" >> /home/pi/.known_hosts
+		chown -R pi:pi /home/pi/.ssh
+		chmod oug-r /home/pi/fleetsie
+		chmod og-w /home/pi/*
+		if ! ssh -i /home/pi/.ssh/fleetsie fleetsie@$FLEETHOST date > /dev/null 2>/tmp/ssherror.txt; then
+		    fatal "could not login to $FLEETHOST with new credentials: `cat /tmp/ssherror.txt`"
+		fi
+
 
 
 	esac
