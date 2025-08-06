@@ -57,27 +57,25 @@ done
 
 mkdir /tmp/usb
 mounted=""
-for part in `grep sda[0-9]$ /proc/partitions | awk '{print $4}'`; do
-    tmp=`mktemp -d`
-    if mount /dev/$part $tmp; then
-	mounted=1
-	break
+tmp=`mktemp -d`
+for PART in `grep sda[0-9]$ /proc/partitions | awk '{print $4}'`; do
+    if mount /dev/$PART $tmp; then
+	## check for fleetsie directory on this partition
+	if [[ -d $tmp/fleetsie ]]; then
+	    mounted=1
+	    break
+	else
+	    umount $tmp
+	fi
     fi
 done
 if [[ ! "$mounted" ]]; then
     fatal
 fi
 
-cd $tmp
+cd $tmp/fleetsie
 LOGFILE="fleetsie_provisioning_log.txt"
-printf "\nprovisioning started at %s\n" `date` >> $LOGFILE
-
-## check for fleetsie directory
-if [[ ! -d fleetsie ]]; then
-    fatal "can't find fleetsie directory on USB disk"
-fi
-
-cd fleetsie
+printf "\nprovisioning started from $PART at %s\n" `date` >> $LOGFILE
 
 ## try provision wifi
 if [[ ! -f "wifi.txt" ]]; then
@@ -155,7 +153,7 @@ while true; do
 	fatal "no passwords left in otp.sqlite - contact an administrator for more"
     fi
     if !  printf "%s %s %s\n" $$SERNO $OTP $FLEETNAME | \
-	    ssh -oStrictHostKeyChecking=true fleetsie@$FLEETHOST \
+	    ssh -oStrictHostKeyChecking=true -i /root/.ssh/fleetsieauth fleetsie@$FLEETHOST \
 		> $REPLY_FILE 2> $ERROR_FILE; then
 	fatal "error trying to ssh to $FLEETHOST: `cat ERROR_FILE`"
     fi
@@ -176,31 +174,34 @@ while true; do
 		fatal "server $FLEETHOST reported this error: $ERRMSG"
 		;;
 	    ok)
-		if ! read HOSTNAME && read PORT && read PUBKEY && read PRIVKEY; then
-		    fatal "server $FLEETHOST gave bad reply: $HOSTNAME,$PORT,$PUBKEY,$PRIVKEY"
+		if ! { read HOSTNAME && read FLEETUSER && read PORT && read PUBKEY && read PRIVKEY } ; then
+		    fatal "server $FLEETHOST gave bad reply: `cat $REPLY_FILE`"
 		fi
 		info "setting hostname to $HOSTNAME"
 		echo "$HOSTNAME" /etc/hostname
 		info "saving ssh keys for access to $HOSTNAME"
 		mkdir -p /home/pi/.ssh
-		echo "$PORT" > /home/pi/.ssh/fleetsie_tunnel_port
+		ln -s "$PORT" /home/pi/.ssh/fleetsie_tunnel_port
 		echo "$PUBKEY" > /home/pi/.ssh/fleetsie.pub
 		echo "$PRIVKEY" > /home/pi/.ssh/fleetsie
 		echo "$FLEETKNOWNHOST" >> /home/pi/.known_hosts
 		chown -R pi:pi /home/pi/.ssh
 		chmod oug-r /home/pi/fleetsie
 		chmod og-w /home/pi/*
+		cat >> /home/pi/.ssh/config <<EOF
+Host fleetsie
+   Hostname $FLEETHOST
+   User $FLEETUSER
+   StrictHostKeyChecking yes
+   IdentityFile ~/.ssh/fleetsie
+   IdentitiesOnly yes
+
+EOF
 		if ! ssh -i /home/pi/.ssh/fleetsie fleetsie@$FLEETHOST date > /dev/null 2>/tmp/ssherror.txt; then
 		    fatal "could not login to $FLEETHOST with new credentials: `cat /tmp/ssherror.txt`"
 		fi
-
-
-
 	esac
     } < $REPLY_FILE
-
-
-
 
 if [[ -f customize ]]; then
     info "running customize script"

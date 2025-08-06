@@ -6,7 +6,7 @@ Type=oneshot
 ## For Raspberry Pi OS "stable" means on the second boot.  The first boot does partition resizing,
 ## and we want to wait until that and the subsequent reboot have happened.
 ExecStartPre=/bin/bash -c "if grep firstboot /proc/cmdline; then exit 1; else exit 0; fi"
-ExecStart=/usr/sbin/fleetsie_provision
+ExecStart=/opt/fleetsie/fleetsie_provision
 ExecStopPost=bin/bash -c "systemctl disable fleetsie.service"
 StandardOutput=journal
 StandardError=journal

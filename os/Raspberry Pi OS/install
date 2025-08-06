@@ -10,14 +10,17 @@
 BOOTFS=$TARGET_ROOT/bootfs
 ROOTFS=$TARGET_ROOT/rootfs
 SYSTEMD=$ROOTFS/etc/systemd/system
+OPT=$ROOTFS/opt/fleetsie
 
-DST=$SYSTEMD/fleetsie.service
-cp ./fleetsie.service $DST
+DST=$SYSTEMD/fleetsie-provision.service
+cp ./fleetsie-provision.service $DST
 chown root:root $DST
 chmod oug+x $DST
-ln -s /etc/systemd/system/fleetsie.service $SYSTEMD/multi-user.target.wants
+ln -s /etc/systemd/system/fleetsie-provision.service $SYSTEMD/multi-user.target.wants
 
-DST=$ROOTFS/usr/sbin/fleetsie_provision
+mkdir -p $OPT
+chown root:root $OPT
+DST=$OPT/fleetsie_provision
 cp ./fleetsie_provision $DST
 chmown root:root $DST
 chown oug+x $DST

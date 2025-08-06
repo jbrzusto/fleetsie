@@ -267,7 +267,7 @@ function install_image () {
     fi
     export TARGET_ROOT="$PWD"
     cd "$FLEETSIE_DIR/os/$1/"
-    ./install || exit 1
+    . install || exit 1
 }
 
 # safe_rsync rsyncs $1 to $2 with options in $3, $4, ...
