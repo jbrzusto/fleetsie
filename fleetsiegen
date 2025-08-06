@@ -1,6 +1,7 @@
 #!/bin/bash
 
-# fleetsiegen - create a template provisioning disk for fleetsie
+# fleetsiegen - create a template provisioning disk for fleetsie,
+# and the fleet inventory on the fleet server.
 
 function usage () {
     # usage below is copied from the `fleetsiegen` section of README.md
@@ -45,3 +46,26 @@ Here's the filesystem layout of the USB drive fleetsiegen creates:
 EOF
     exit 1
 }
+
+
+# notes on what the db looks like
+# create table devices (
+#     id integer unique primary key not null,
+#     fleet string,
+#     fleetuser string,
+#     hostname string,
+#     hwid string,
+#     otp string,
+#     ts_generated double,
+#     ts_provisioned double,
+#     tunnel_port integer,
+#     public_key string,
+#     private_key string,
+#     ip_provisioned_from
+# );
+# create unique index on devices(hwid);
+# create unique index on devices(fleet,otp,hwid);
+
+# Entries in this table are created by fleetsiegen.  For each entry, the missing fields are
+# ts_provisioned, ip_provisioned_from, and hwid.  These are determined by the provisioning
+# race.
