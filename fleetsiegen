@@ -6,13 +6,51 @@
 function usage () {
     # usage below is copied from the `fleetsiegen` section of README.md
     cat <<EOF
-## 'fleetsiegen' - generate a template for a fleetsie provisioning disk
+## 'fleetsiegen' - generate a USB provisioning disk and server inventory
+for a fleet of devices.
+
+Usage:
+
+   fleetsiegen FLEET_NAME FLEET_HOST [NUM] [USB_PARTITION]
+
+where
+
+   FLEET_NAME is the name of the fleet.  It should be short and
+   composed of alphanumeric characters and underscores.  Devices
+   belonging to the fleet will be assigned the hostnames FLEET_NAME-1,
+   FLEET_NAME-2, ...
+
+   FLEET_HOST is the server (e.g. whoflewby.org) where the fleet
+   will be hosted.  The user running fleetsiegen must have ssh set-up
+   so that they can login to fleetsie@FLEET_HOST
+
+   NUM (optional) is the number of devices to pre-allocate for the
+   fleet on the server.  If this is zero or missing, no devices are
+   pre-allocated.  Otherwise, SIZE new devices are allocated for the
+   fleet, adding to any which are already there.  e.g. if the fleet
+   already has 100 device allocated (from a previous use of
+   fleetsiegen), the new devices will be named FLEET-101, FLEET-102,
+   ...
+
+   USB_PARTITION (optional) is the name of the disk partition on the
+   user's machine (e.g. sda2) where the fleetsie files will be installed.
+   If missing, no fleet files are installed anywhere; this allows you
+   to just allocate new fleet devices on the server without creating
+   a USB disk.
+
+   If USB_PARTITION begins with a "/", it is treated as a path to a
+   directory, and fleetsiegen will create or use a subdirectory there
+   called "fleetsie" as the destination for installing files, rather
+   than a disk partition. This can be used for testing.
+
+
 
 fleetsiegen creates files on a USB drive and on the fleet server such
 that a number of devices can be provisioned (using the USB drive) with
 access to the server.
 
-Here's the filesystem layout of the USB drive fleetsiegen creates:
+USB drive layout
+fleetsiegen creates this layout on the USB drive:
 
   /fleetsie
    - top-level folder
@@ -42,6 +80,12 @@ Here's the filesystem layout of the USB drive fleetsiegen creates:
    - systemd service and script it runs to maintain a ssh connection to the fleet server,
      with a port mapped from the server back to the local ssh server; also maintains
      a local port which maps to the zabbix data port on the fleet server.
+
+  /fleetsie/custom/setup
+
+   - the custom folder is where fleetsie looks for other files you want to install.
+     The setup script will be run after all other provisioning steps have succeeded.
+     fleetsie ignores all other files and subdirectories of /fleetsie/custom.
 
 EOF
     exit 1

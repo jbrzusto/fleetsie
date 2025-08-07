@@ -153,7 +153,7 @@ while true; do
 	fatal "no passwords left in otp.sqlite - contact an administrator for more"
     fi
     if !  printf "%s %s %s\n" $$SERNO $OTP $FLEETNAME | \
-	    ssh -oStrictHostKeyChecking=true -i /root/.ssh/fleetsieauth fleetsie@$FLEETHOST \
+	    ssh -oStrictHostKeyChecking=true -i /root/.ssh/fleetsieauth fleetsieauth@$FLEETHOST \
 		> $REPLY_FILE 2> $ERROR_FILE; then
 	fatal "error trying to ssh to $FLEETHOST: `cat ERROR_FILE`"
     fi
