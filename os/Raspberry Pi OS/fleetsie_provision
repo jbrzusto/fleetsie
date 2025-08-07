@@ -152,8 +152,8 @@ while true; do
     if [[ "$otp" == "" ]]; then
 	fatal "no passwords left in otp.sqlite - contact an administrator for more"
     fi
-    if !  printf "%s %s %s\n" $$SERNO $OTP $FLEETNAME | \
-	    ssh -oStrictHostKeyChecking=true -i /root/.ssh/fleetsieauth fleetsieauth@$FLEETHOST \
+    if !  printf "%s %s\n" $$SERNO $OTP | \
+	    ssh -oStrictHostKeyChecking=true -i /root/.ssh/fleetsieauth fleetsie_$FLEETNAME@$FLEETHOST \
 		> $REPLY_FILE 2> $ERROR_FILE; then
 	fatal "error trying to ssh to $FLEETHOST: `cat ERROR_FILE`"
     fi
@@ -197,15 +197,27 @@ Host fleetsie
    IdentitiesOnly yes
 
 EOF
-		if ! ssh -i /home/pi/.ssh/fleetsie fleetsie@$FLEETHOST date > /dev/null 2>/tmp/ssherror.txt; then
+		if ! ssh -i /home/pi/.ssh/fleetsie fleetsie date > /dev/null 2>/tmp/ssherror.txt; then
 		    fatal "could not login to $FLEETHOST with new credentials: `cat /tmp/ssherror.txt`"
 		fi
+		break
 	esac
     } < $REPLY_FILE
+done
 
-if [[ -f customize ]]; then
-    info "running customize script"
-    . ./customize
+if [[ -d customize ]]; then
+    info "entering customize directory"
+    if [[ -f setup ]]; then
+	info "running customize/setup"
+	if . ./setup 2>/tmp/setuplog.txt; then
+	    info "setup completed successfully."
+	else
+	    info "error while running setup: `cat /tmp/setuplog.txt`"
+	fi
+    else
+	info "no setup script found."
+    fi
 else
-    info "no customize script found.  All done"
+    info "no customize directory on USB disk; provisioning done."
 fi
+info "provisioning ended at `date`"

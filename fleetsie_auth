@@ -83,4 +83,4 @@ sqlite tunnel_port "select tunnel_port from devices where hwid='$HWID'"
 sqlite public_key "select public_key from devices where hwid='$HWID'"
 sqlite private_key "select private_key from devices where hwid='$HWID'"
 
-printf "Ok\n%s\n%s\n%s\n%s\n%s\n" $hostname $fleetuser $tunnel_port $public_key $private_key
+printf "Ok\n%s\n%s\n%s\n%s\n%s\n" "$hostname" "$fleetuser" "$tunnel_port" "$public_key" "$private_key"

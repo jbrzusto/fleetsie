@@ -4,14 +4,14 @@
 # and the fleet inventory on the fleet server.
 
 function usage () {
-    # usage below is copied from the `fleetsiegen` section of README.md
+    # usage below is copied from the `fleetsie_gen` section of README.md
     cat <<EOF
-## 'fleetsiegen' - generate a USB provisioning disk and server inventory
+## 'fleetsie_gen' - generate a USB provisioning disk and server inventory
 for a fleet of devices.
 
 Usage:
 
-   fleetsiegen FLEET_NAME FLEET_HOST [NUM] [USB_PARTITION]
+   fleetsie_gen FLEET_NAME FLEET_HOST [NUM] [USB_PARTITION]
 
 where
 
@@ -21,7 +21,7 @@ where
    FLEET_NAME-2, ...
 
    FLEET_HOST is the server (e.g. whoflewby.org) where the fleet
-   will be hosted.  The user running fleetsiegen must have ssh set-up
+   will be hosted.  The user running fleetsie_gen must have ssh set-up
    so that they can login to fleetsie@FLEET_HOST
 
    NUM (optional) is the number of devices to pre-allocate for the
@@ -29,7 +29,7 @@ where
    pre-allocated.  Otherwise, SIZE new devices are allocated for the
    fleet, adding to any which are already there.  e.g. if the fleet
    already has 100 device allocated (from a previous use of
-   fleetsiegen), the new devices will be named FLEET-101, FLEET-102,
+   fleetsie_gen), the new devices will be named FLEET-101, FLEET-102,
    ...
 
    USB_PARTITION (optional) is the name of the disk partition on the
@@ -39,18 +39,18 @@ where
    a USB disk.
 
    If USB_PARTITION begins with a "/", it is treated as a path to a
-   directory, and fleetsiegen will create or use a subdirectory there
+   directory, and fleetsie_gen will create or use a subdirectory there
    called "fleetsie" as the destination for installing files, rather
    than a disk partition. This can be used for testing.
 
 
 
-fleetsiegen creates files on a USB drive and on the fleet server such
+fleetsie_gen creates files on a USB drive and on the fleet server such
 that a number of devices can be provisioned (using the USB drive) with
 access to the server.
 
 USB drive layout
-fleetsiegen creates this layout on the USB drive:
+fleetsie_gen creates this layout on the USB drive:
 
   /fleetsie
    - top-level folder
@@ -110,6 +110,6 @@ EOF
 # create unique index on devices(hwid);
 # create unique index on devices(fleet,otp,hwid);
 
-# Entries in this table are created by fleetsiegen.  For each entry, the missing fields are
+# Entries in this table are created by fleetsie_gen.  For each entry, the missing fields are
 # ts_provisioned, ip_provisioned_from, and hwid.  These are determined by the provisioning
 # race.
