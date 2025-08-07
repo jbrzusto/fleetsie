@@ -236,31 +236,33 @@ where `USER` must either be `root`, or a user with sudo privileges on `SERVER`
 
 This script will set up `SERVER` via ssh like so:
 
-- create user `fleetsie`
+- create user `fleetsie` with `sudo` privileges; you will be prompted to enter
+  a password for this user
 - create sqlite database `/home/fleetsie/fleets.sqlite` with this schema:
 
 ```sql
 CREATE TABLE devices (
-     id INTEGER UNIQUE PRIMARY KEY NOT NULL,  // unique ID for device, across all fleets
-     fleet string NOT NULL,                   // name of fleet device belongs to
-     fleetuser string NOT NULL,               // name of user device uses for ssh to fleet server
-     hostname string NOT NULL,                // hostname for device
-     hwid string,                             // hardware ID of device; NULL means no device registered to this record yet
-     otp string NOT NULL,                     // one-time password used by device to register
-     ts_generated double NOT NULL,            // unix timestamp for when this device record was generated
-     ts_registered double,                    // unix timestamp for when this device was registered; NULL means not registered yet
-     tunnel_port integer NOT NULL,            // TCP port mapped on server back to device SSH server port
-     device_public_key string NOT NULL,       // public key which can be used to login to user 1000 on device
-     device_private_key string NOT NULL,      // private key which can be used to login to user 1000 on device
-     server_public_key string NOT NULL,       // public key which device will use to ssh into fleet server
-     server_private_key string NOT NULL,      // private key which device will use to ssh into fleet server
-     ip_provisioned_from NOT NULL             // IP address from which request to provision this device originated
+     id INTEGER UNIQUE PRIMARY KEY NOT NULL,  -- unique ID for device, across all fleets
+     fleet VARCHAR NOT NULL,                  -- name of fleet device belongs to
+	 id_in_fleet INTEGER NOT NULL,            -- unique ID for device within fleet
+     fleetuser VARCHAR NOT NULL,              -- name of user device uses for ssh to fleet server; typically, fleetsie_FLEET
+     hostname VARCHAR NOT NULL,               -- hostname for device; typically FLEET-ID_IN_FLEET
+     hwid VARCHAR,                            -- hardware ID of device; NULL means no device registered to this record yet
+     otp VARCHAR NOT NULL,                    -- one-time password used by device to register
+     ts_generated DOUBLE NOT NULL,            -- unix timestamp for when this device record was generated
+     ts_registered DOUBLE,                    -- unix timestamp for when this device was registered; NULL means not registered yet
+     tunnel_port INTEGER NOT NULL,            -- TCP port mapped on server back to device SSH server port
+     device_public_key VARCHAR NOT NULL,      -- public key which can be used to login as user 1000 on device
+     device_private_key VARCHAR NOT NULL,     -- private key which can be used to login as user 1000 on device
+     server_public_key VARCHAR NOT NULL,      -- public key which device will use to ssh into fleet server
+     server_private_key VARCHAR NOT NULL,     -- private key which device will use to ssh into fleet server
+     ip_provisioned_from VARCHAR NOT NULL     -- IP address from which request to provision this device originated
  );
  CREATE UNIQUE INDEX ON devices(hwid);
  CREATE UNIQUE INDEX ON devices(fleet, otp, hwid);
 ```
 
-This table consists of pre-allocated device records for one or more
+This table, initially empty, holds pre-allocated device records for one or more
 fleets.  Entries in this table will be created by fleet administrators
 using `fleetsie_gen`.  When entries are created, these fields are left
 NULL:
@@ -273,7 +275,6 @@ hwid
 
 The NULL fields get set during device provisioning when a physical
 device presents an unused OTP password to register itself with the
-server.  It is not known in advance which piece of hardware will end
-up claiming which pre-allocated device, but `fleetsie_auth` ensures
-that each physical device will end up associated with a single, unique
-device record.
+server.  It is not known in advance which physical device will end up
+registered to each pre-allocated device, but `fleetsie_auth` ensures
+that no two physical devices get registered to the same device record.

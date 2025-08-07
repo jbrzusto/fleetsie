@@ -142,15 +142,8 @@ cp  fleetsieauth.pub fleetsieauth /root/.ssh/
 chmod oug+r /root/.ssh/fleetsieauth.pub
 chmod og-rw /root/.ssh/fleetsieauth
 
+# get name of user with id=1000, typically the first non-privileged user.
 user1000=`id -nu 1000`
-KEYFILE=~$user1000/.ssh/id_ed25519_fleetsie
-if [[ ! -f $KEYFILE || ! -f ${KEYFILE}.pub ]]; then
-    rm -f $KEYFILE ${KEYFILE}.pub
-    info "generating ssh credentials to allow login as user '$user1000'"
-    ssh-keygen -P "" -t ed25519 -f ~/.ssh/id_ed25519_fleetsie
-fi
-PRIVKEY=`cat $KEYFILE`
-PUBKEY=`cat ${KEYFILE}.pub`
 
 info "sshing to fleet server $FLEETHOST"
 
@@ -162,7 +155,7 @@ while true; do
     if [[ "$otp" == "" ]]; then
 	fatal "no passwords left in otp.sqlite - contact an administrator for more"
     fi
-    if !  printf "%s\n%s\n%s\n%s\n" "$SERNO" "$OTP" "$PUBKEY" "$PRIVKEY" | \
+    if !  printf "%s\n%s\n" "$SERNO" "$OTP" | \
 	    ssh -oStrictHostKeyChecking=true -i /root/.ssh/fleetsieauth fleetsie_$FLEETNAME@$FLEETHOST \
 		> $REPLY_FILE 2> $ERROR_FILE; then
 	fatal "error trying to ssh to $FLEETHOST: `cat ERROR_FILE`"
@@ -184,29 +177,29 @@ while true; do
 		fatal "server $FLEETHOST reported this error: $ERRMSG"
 		;;
 	    ok)
-		if ! { read HOSTNAME && read FLEETUSER && read PORT && read PUBKEY && read PRIVKEY } ; then
+		if ! { read HOSTNAME && read FLEETUSER && read PORT && read SRVPUBKEY && read SRVPRIVKEY && read DEVAUTHKEY } ; then
 		    fatal "server $FLEETHOST gave bad reply: `cat $REPLY_FILE`"
 		fi
 		info "setting hostname to $HOSTNAME"
 		echo "$HOSTNAME" /etc/hostname
 		info "saving ssh keys for access to $HOSTNAME"
-		mkdir -p /home/pi/.ssh
-		ln -s "$PORT" /home/pi/.ssh/fleetsie_tunnel_port
-		echo "$PUBKEY" > /home/pi/.ssh/fleetsie.pub
-		echo "$PRIVKEY" > /home/pi/.ssh/fleetsie
-		echo "$FLEETKNOWNHOST" >> /home/pi/.known_hosts
-		chown -R pi:pi /home/pi/.ssh
-		chmod oug-r /home/pi/fleetsie
-		chmod og-w /home/pi/*
-		cat >> /home/pi/.ssh/config <<EOF
+		mkdir -p /home/${USER1000}/.ssh
+		ln -s "$PORT" /home/${USER1000}/.ssh/fleetsie_tunnel_port
+		echo "$SRVPUBKEY" > /home/${USER1000}/.ssh/fleetsie.pub
+		echo "$SRVPRIVKEY" > /home/${USER1000}/.ssh/fleetsie
+		echo "$FLEETKNOWNHOST" >> /home/${USER1000}/.known_hosts
+		echo "$DEVAUTHKEY" >> /home/pi/.ssh/authorized_keys
+		cat >> /home/${USER1000}/.ssh/config <<EOF
 Host fleetsie
    Hostname $FLEETHOST
    User $FLEETUSER
    StrictHostKeyChecking yes
    IdentityFile ~/.ssh/fleetsie
    IdentitiesOnly yes
-
 EOF
+		chown -R ${USER1000}:${USER1000} /home/${USER1000}/.ssh
+		chmod oug-r /home/${USER1000}/fleetsie
+		chmod og-w -R /home/${USER1000}/.ssh
 		if ! ssh -i /home/pi/.ssh/fleetsie fleetsie date > /dev/null 2>/tmp/ssherror.txt; then
 		    fatal "could not login to $FLEETHOST with new credentials: `cat /tmp/ssherror.txt`"
 		fi

@@ -91,7 +91,8 @@ fi
 sqlite hostname "select hostname from devices where hwid='$HWID'"
 sqlite fleetuser "select fleetuser from devices where hwid='$HWID'"
 sqlite tunnel_port "select tunnel_port from devices where hwid='$HWID'"
-sqlite public_key "select public_key from devices where hwid='$HWID'"
-sqlite private_key "select private_key from devices where hwid='$HWID'"
+sqlite srv_public_key "select server_public_key from devices where hwid='$HWID'"
+sqlite srv_private_key "select server_private_key from devices where hwid='$HWID'"
+sqlite dev_auth_key "select device_public_key from devices where hwid='$HWID'"
 
-printf "Ok\n%s\n%s\n%s\n%s\n%s\n" "$hostname" "$fleetuser" "$tunnel_port" "$public_key" "$private_key"
+printf "Ok\n%s\n%s\n%s\n%s\n%s\n" "$hostname" "$fleetuser" "$tunnel_port" "$srv_public_key" "$srv_private_key" "$dev_auth_key"
