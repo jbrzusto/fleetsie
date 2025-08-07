@@ -237,10 +237,9 @@ where `USER` must either be `root`, or a user with sudo privileges on `SERVER`
 This script will set up `SERVER` via ssh like so:
 
 - create user `fleetsie`
-- create sqlite database `/home/fleetsie/fleets.sqlite with this schema:
+- create sqlite database `/home/fleetsie/fleets.sqlite` with this schema:
 
 ```sql
-
 CREATE TABLE devices (
      id INTEGER UNIQUE PRIMARY KEY NOT NULL,  // unique ID for device, across all fleets
      fleet string NOT NULL,                   // name of fleet device belongs to
@@ -262,8 +261,9 @@ CREATE TABLE devices (
 ```
 
 This table consists of pre-allocated device records for one or more
-fleets.  Entries in this table are created by `fleetsie_gen`.  When
-entries are created, these fields are left NULL:
+fleets.  Entries in this table will be created by fleet administrators
+using `fleetsie_gen`.  When entries are created, these fields are left
+NULL:
 
 ```
 ts_provisioned
