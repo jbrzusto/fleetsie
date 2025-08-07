@@ -11,7 +11,7 @@ supplied on an attached USB disk.  The script is intended to be run once, at pro
 
 **`fleetsie-provision.service`**: systemd service that runs `fleetsie_provision` when the system is **stable**.
 The meaning of **stable** might depend on the OS.  Disables itself after a successful run of
-`fleetsie`.
+`fleetsie_provision`.
 
 **`fleetsie_gen`**: generate a USB provisioning disk and the server-side inventory for a fleet
 
@@ -236,6 +236,8 @@ where `USER` must either be `root`, or a user with sudo privileges on `SERVER`
 
 This script will set up `SERVER` via ssh like so:
 
+- install any of these packages which are missing:
+  - sqlite3
 - create user `fleetsie` with `sudo` privileges; you will be prompted to enter
   a password for this user
 - create sqlite database `/home/fleetsie/fleets.sqlite` with this schema:
@@ -260,6 +262,7 @@ CREATE TABLE devices (
  );
  CREATE UNIQUE INDEX ON devices(hwid);
  CREATE UNIQUE INDEX ON devices(fleet, otp, hwid);
+ CREATE UNIQUE INDEX ON devices(fleet, id_in_fleet);
 ```
 
 This table, initially empty, holds pre-allocated device records for one or more
