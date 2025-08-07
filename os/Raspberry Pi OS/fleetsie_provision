@@ -142,6 +142,16 @@ cp  fleetsieauth.pub fleetsieauth /root/.ssh/
 chmod oug+r /root/.ssh/fleetsieauth.pub
 chmod og-rw /root/.ssh/fleetsieauth
 
+user1000=`id -nu 1000`
+KEYFILE=~$user1000/.ssh/id_ed25519_fleetsie
+if [[ ! -f $KEYFILE || ! -f ${KEYFILE}.pub ]]; then
+    rm -f $KEYFILE ${KEYFILE}.pub
+    info "generating ssh credentials to allow login as user '$user1000'"
+    ssh-keygen -P "" -t ed25519 -f ~/.ssh/id_ed25519_fleetsie
+fi
+PRIVKEY=`cat $KEYFILE`
+PUBKEY=`cat ${KEYFILE}.pub`
+
 info "sshing to fleet server $FLEETHOST"
 
 SERNO=`cat /sys/class/net/eth0/address`
@@ -152,7 +162,7 @@ while true; do
     if [[ "$otp" == "" ]]; then
 	fatal "no passwords left in otp.sqlite - contact an administrator for more"
     fi
-    if !  printf "%s %s\n" $$SERNO $OTP | \
+    if !  printf "%s\n%s\n%s\n%s\n" "$SERNO" "$OTP" "$PUBKEY" "$PRIVKEY" | \
 	    ssh -oStrictHostKeyChecking=true -i /root/.ssh/fleetsieauth fleetsie_$FLEETNAME@$FLEETHOST \
 		> $REPLY_FILE 2> $ERROR_FILE; then
 	fatal "error trying to ssh to $FLEETHOST: `cat ERROR_FILE`"

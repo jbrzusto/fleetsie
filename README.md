@@ -15,6 +15,8 @@ The meaning of **stable** might depend on the OS.  Disables itself after a succe
 
 **`fleetsie_gen`**: generate a USB provisioning disk and the server-side inventory for a fleet
 
+**`fleetsie_srv`**: set up a server for use with `fleetsie_gen`
+
 ## `fleetsie_mod` - Manage Creation of a Modified OS Image
 
 ### Requirements
@@ -222,25 +224,56 @@ EOF
     exit 1
 }
 
+## fleetsie_srv - set up a server for use with fleetsie_gen
 
-# notes on what the db looks like
-# create table devices (
-#     id integer unique primary key not null,
-#     fleet string,
-#     fleetuser string,
-#     hostname string,
-#     hwid string,
-#     otp string,
-#     ts_generated double,
-#     ts_provisioned double,
-#     tunnel_port integer,
-#     public_key string,
-#     private_key string,
-#     ip_provisioned_from
-# );
-# create unique index on devices(hwid);
-# create unique index on devices(fleet,otp,hwid);
+`fleetsie_srv` is run on the fleet manager's PC like so:
 
-# Entries in this table are created by fleetsie_gen.  For each entry, the missing fields are
-# ts_provisioned, ip_provisioned_from, and hwid.  These are determined by the provisioning
-# race.
+```sh
+fleetsie_srv USER@SERVER
+```
+
+where `USER` must either be `root`, or a user with sudo privileges on `SERVER`
+
+This script will set up `SERVER` via ssh like so:
+
+- create user `fleetsie`
+- create sqlite database `/home/fleetsie/fleets.sqlite with this schema:
+
+```sql
+
+CREATE TABLE devices (
+     id INTEGER UNIQUE PRIMARY KEY NOT NULL,  // unique ID for device, across all fleets
+     fleet string NOT NULL,                   // name of fleet device belongs to
+     fleetuser string NOT NULL,               // name of user device uses for ssh to fleet server
+     hostname string NOT NULL,                // hostname for device
+     hwid string,                             // hardware ID of device; NULL means no device registered to this record yet
+     otp string NOT NULL,                     // one-time password used by device to register
+     ts_generated double NOT NULL,            // unix timestamp for when this device record was generated
+     ts_registered double,                    // unix timestamp for when this device was registered; NULL means not registered yet
+     tunnel_port integer NOT NULL,            // TCP port mapped on server back to device SSH server port
+     device_public_key string NOT NULL,       // public key which can be used to login to user 1000 on device
+     device_private_key string NOT NULL,      // private key which can be used to login to user 1000 on device
+     server_public_key string NOT NULL,       // public key which device will use to ssh into fleet server
+     server_private_key string NOT NULL,      // private key which device will use to ssh into fleet server
+     ip_provisioned_from NOT NULL             // IP address from which request to provision this device originated
+ );
+ CREATE UNIQUE INDEX ON devices(hwid);
+ CREATE UNIQUE INDEX ON devices(fleet, otp, hwid);
+```
+
+This table consists of pre-allocated device records for one or more
+fleets.  Entries in this table are created by `fleetsie_gen`.  When
+entries are created, these fields are left NULL:
+
+```
+ts_provisioned
+ip_provisioned_from
+hwid
+```
+
+The NULL fields get set during device provisioning when a physical
+device presents an unused OTP password to register itself with the
+server.  It is not known in advance which piece of hardware will end
+up claiming which pre-allocated device, but `fleetsie_auth` ensures
+that each physical device will end up associated with a single, unique
+device record.

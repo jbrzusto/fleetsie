@@ -27,6 +27,12 @@ function sanitize() {
     v=${v//[^[:alnum:]:_]/}
 }
 
+# sanitize_key removes any characters outside of [:alnum:] [:space:] and [-@_=:+/] from the named env var
+function sanitize_key() {
+    declare -n v=$1
+    v=${v//[^-@_=:+\/[:space:][:alnum:]]/}
+}
+
 # location of master fleetsie DB
 DB=/home/fleetsie/allfleets.sqlite
 
@@ -50,14 +56,19 @@ if [[ ! $HWID =~ ^([[:xdigit:]]{2}:){5}[[:xdigit:]]{2}$ ]]; then
     die "invalid hardware ID"
 fi
 
-read FLEETNAME
-sanitize FLEETNAME
-if [[ ! -d /home/fleetsie_$FLEETNAME ]]; then
-    die "unknown fleetname"
-fi
-
+# FLEETNAME is provided as an environment variable by the ssh key in /home/fleetsie_fleet/.ssh/authorized_keys
 read OTP
 sanitize OTP
+
+read PUBKEY
+sanitize_key PUBKEY
+
+PRIVKEY=""
+# read remaining lines as private key file lines
+while read PRIVKEYLINE; do
+    printf -v PRIVKEY "%s%s\n" "$PRIVKEY" "$PRIVKEYLINE"
+done
+sanitize_key PRIVKEY
 
 # check whether this hwid already registered
 sqlite resp "select count(*) from devices where hwid='$HWID'"
