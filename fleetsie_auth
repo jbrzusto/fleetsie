@@ -1,14 +1,27 @@
 #!/bin/bash
 
-# fleetsieauth - provide credentials to a client device upon receipt of a valid one-time-password
-
-# This script is forced to run when a device logs into the fleetsie server using fleet credentials
-# which are supplied on the fleetsie provisioning USB disk.
-
-# First, read from stdin, where the provisioning device is supposed to supply 3 lines:
+# fleetsieauth - provide credentials to a client device upon receipt
+# of a valid one-time-password
+#
+# This script is (forced to) run on the fleet server when a device
+# ssh's in using the fleet credentials which are supplied on the fleetsie
+# provisioning USB disk.  It runs as user fleetsie_FLEETNAME.
+#
+# It reads two items from stdin, supplied by the provisioning device, one per line:
 # HWID (as a colon-separated hex string)
-# FLEETNAME (an alphanumeric name, up to 20 chars, with no space or special chars)
 # OTP (a 128-char hex string)
+#
+# There are several possible outcomes:
+#
+# If the OTP is valid and the corresponding device record has not been claimed
+# (i.e. HWID in that DB record is NULL), then fill-in the HWID and other fields
+# for the device record, print the "Ok" message and then credentials.
+
+# If the OTP is valid but has been claimed, print the "Try" message and the first
+# index of an unclaimed device for the fleet, if there is one.  If not, print the "Full"
+# message.
+#
+# For an invalid OTP or any other case, print the "Error" message and possibly details.
 
 # die returns an error to the ssh client, and exits
 function die() {
@@ -21,7 +34,12 @@ function suggest_trying() {
     exit 1
 }
 
-# sanitize removes any characters outside of [:alnum:] and [_:] from the named env var
+function report_full() {
+    printf "Full\n"
+    exit 1
+}
+
+# sanitize removes any characters outside of [_:] and [:alnum:] from the named env var
 function sanitize() {
     declare -n v=$1
     v=${v//[^[:alnum:]:_]/}
@@ -33,8 +51,8 @@ function sanitize_key() {
     v=${v//[^-@_=:+\/[:space:][:alnum:]]/}
 }
 
-# location of master fleetsie DB
-DB=/home/fleetsie/allfleets.sqlite
+# location of fleet DB; this is generated in advance by fleetsie_gen_srv
+DB=~/fleet.sqlite
 
 # sqlite runs a set of queries through the devices sqlite database.
 # The first line output is saved in the variable whose name
@@ -47,7 +65,6 @@ function sqlite() {
     shift
     { read skip ; read v ; } < <( sqlite3 $DB "pragma busy_timeout=1000;$*" )
 }
-
 
 read HWID
 sanitize HWID
@@ -70,21 +87,36 @@ while read PRIVKEYLINE; do
 done
 sanitize_key PRIVKEY
 
+# check whether this is a valid OTP; early, so that we don't
+# leak information to a totally unauthorized user.
+sqlite resp "select count(*) from devices where otp='$OTP'"
+if [[ "$resp" == "0" ]]; then
+    die "invalid one-time password"
+fi
+
 # check whether this hwid already registered
 sqlite resp "select count(*) from devices where hwid='$HWID'"
-if [[ "resp" != "0" ]]; then
+if [[ "$resp" != "0" ]]; then
     die "hardware id $HWID already registered"
 fi
 
-# find the OTP int the table, but only if it is for the correct fleet and not yet registered
-sqlite resp "update devices set hwid='$HWID', ts_provisioned=unixepoch('subsec') where fleet='$FLEETNAME' and otp='$OTP' and hwid=''"
+# find the OTP in the table, but only if it is not yet registered
+# Note that sqlite locks the table before doing the where clause,
+# so this is atomic and at most one process can succeed in claiming the
+# device record with the matching OTP.
+CLIENT_IP=${SSH_CLIENT/ */}
+sqlite resp "update devices set hwid='$HWID', ts_provisioned=unixepoch('subsec'), ip_provisioned_from='$CLIENT_IP' where otp='$OTP' and hwid=''"
 
 # did we succeed in registering the device with this OTP?
-sqlite resp "select otp from devices where hwid='$HWID'"
-if [[ "resp" != "$OTP" ]]; then
+sqlite resp "select hwid from devices where otp='$OTP'"
+if [[ "$resp" != "$HWID" ]]; then
     # someone else got to the device first, do a query to suggest the index of the OTP to try next
-    sqlite resp "select min(id) from devices where fleet='$FLEETNAME' and hwid=''"
-    suggest_trying $resp
+    sqlite resp "select min(id_in_fleet) from devices where hwid=''"
+    if [[ "$resp" != "" ]]; then
+	suggest_trying $resp
+    else
+	report_full
+    fi
 fi
 
 # registration successful - return details to user
@@ -95,4 +127,4 @@ sqlite srv_public_key "select server_public_key from devices where hwid='$HWID'"
 sqlite srv_private_key "select server_private_key from devices where hwid='$HWID'"
 sqlite dev_auth_key "select device_public_key from devices where hwid='$HWID'"
 
-printf "Ok\n%s\n%s\n%s\n%s\n%s\n" "$hostname" "$fleetuser" "$tunnel_port" "$srv_public_key" "$srv_private_key" "$dev_auth_key"
+printf "Ok\n%s\n%s\n%s\n%s\n%s\n%s\n" "$hostname" "$fleetuser" "$tunnel_port" "$srv_public_key" "$srv_private_key" "$dev_auth_key"

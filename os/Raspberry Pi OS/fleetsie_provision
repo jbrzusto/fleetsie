@@ -130,8 +130,8 @@ if [[ ! $FLEETKNOWNHOST ]]; then
 	fatal "can't read known_hosts line for fleet host from from line 3 of fleetsie/fleet.txt file on USB disk"
 fi
 
-
-if [[ ! -f fleetsieauth.pub || ! -f fleetsieauth || ! -f otp.sqlite ]]; then
+DB=devices.sqlite
+if [[ ! -f fleetsieauth.pub || ! -f fleetsieauth || ! -f $DB ]]; then
     fatal "can't find one or more files needed for connecting to fleet server.\nneed:\nfleetsieauth.pub\nfleetsieauth\notp.sqlite\n"
 fi
 
@@ -151,9 +151,9 @@ SERNO=`cat /sys/class/net/eth0/address`
 REPLY_FILE=/tmp/fleetsieauth.txt
 ERROR_FILE=/tmp/fleetsieauth.err
 while true; do
-    otp=`sqlite3 otp.sqlite "select otp from otp where used=0 order by id limit 1"`
-    if [[ "$otp" == "" ]]; then
-	fatal "no passwords left in otp.sqlite - contact an administrator for more"
+    OTP=`sqlite3 $DB "select otp from devices order by id_in_fleet limit 1"`
+    if [[ "$OTP" == "" ]]; then
+	fatal "no devices left in $DB - contact an administrator for more"
     fi
     if !  printf "%s\n%s\n" "$SERNO" "$OTP" | \
 	    ssh -oStrictHostKeyChecking=true -i /root/.ssh/fleetsieauth fleetsie_$FLEETNAME@$FLEETHOST \
@@ -165,12 +165,14 @@ while true; do
 	case $rv in
 	    bad)
 		info "server $FLEETHOST reports OTP=$OTP is bad; trying next OTP"
+		sqlite3 $DB "delete from devices where otp='$OTP'"
 		;;
 	    try)
-		read OTPNUM
-		# mark earlier OTPs as no longer valid
-		sqlite3 otp.sqlite "update otp set used=1 where id < $OTPNUM;"
-		info "server $FLEETHOST suggests trying OTP # $OTPNUM"
+		read DEVNUM
+		# server suggests trying device with id_in_fleet = DEVNUM; delete devices with smaller id_in_fleet
+		# because the server is effectively telling us they have been claimed.
+		sqlite3 $DB "delete from devices where id_in_fleet < $DEVNUM;"
+		info "server $FLEETHOST suggests trying device # $DEVNUM"
 		;;
 	    error)
 		read ERRMSG
@@ -203,6 +205,8 @@ EOF
 		if ! ssh -i /home/pi/.ssh/fleetsie fleetsie date > /dev/null 2>/tmp/ssherror.txt; then
 		    fatal "could not login to $FLEETHOST with new credentials: `cat /tmp/ssherror.txt`"
 		fi
+		info "removing entry with this OTP from devices table"
+		sqlite3 $DB "delete from devices where otp='$OTP'"
 		break
 	esac
     } < $REPLY_FILE
