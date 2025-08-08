@@ -1,0 +1,36 @@
+#!/bin/bash
+#
+# Maintain a list of connected fleetsie devices in /run/fleetsie/FLEET
+#
+# This script is run when a fleetsie-provisioned device logs into the server.
+# It creates a symlink like  /run/fleetsie/FLEET/FLEET-N -> PORT
+# where FLEET is a fleet name, FLEET-N is the hostname for the Nth device int the FLEET,
+# and PORT is the TCP port which is mapped back to the device's SSH server.
+#
+# The symlink is removed when this script exits.
+#
+# This script is forced to run when the device ssh's in by the
+# clause `command="/home/fleetsie/fleetsie_login"` in the corresponding
+# line in /home/fleetsie_FLEET/.ssh/authorized_keys. That line also includes
+# clauses to set environment variables "FLEETSIE_HOST" and "FLEETSIE_PORT".
+
+LINKDIR=/run/fleetsie/dev
+LINK=$LINKDIR/$FLEETSIE_HOST
+LINKTARGET=$FLEETSIE_PORT
+
+function create_link () {
+    mkdir -p $LINKDIR
+    ln -s -f $LINKTARGET $LINK
+}
+
+function remove_link () {
+    rm -f $LINK
+}
+
+create_link
+
+trap "remove_link" EXIT
+
+while true; do
+    sleep 160
+done

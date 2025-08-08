@@ -54,6 +54,10 @@ function sanitize_key() {
 # location of fleet DB; this is generated in advance by fleetsie_gen_srv
 DB=~/fleet.sqlite
 
+# location of provisioning DB; this keeps the reduced version of the DB
+# with records of unregistered devices, and with only the id_in_fleet and otp columns
+PDB=~/provisioning.sqlite
+
 # sqlite runs a set of queries through the devices sqlite database.
 # The first line output is saved in the variable whose name
 # is provided as $1; remaining parameters are the db queries.
@@ -119,7 +123,8 @@ if [[ "$resp" != "$HWID" ]]; then
     fi
 fi
 
-# registration successful - return details to user
+# registration successful - drop record from provisioning DB and return details to user
+sqlite _ignore_ "attach database '$PDB' as db1; delete from db1.devices where otp='$OTP'"
 sqlite hostname "select hostname from devices where hwid='$HWID'"
 sqlite fleetuser "select fleetuser from devices where hwid='$HWID'"
 sqlite tunnel_port "select tunnel_port from devices where hwid='$HWID'"

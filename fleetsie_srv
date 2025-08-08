@@ -84,6 +84,8 @@ ssh $SSHUSER sudo mkdir /home/fleetsie/.ssh
 cat ${TARGFILE}.pub | ssh $SSHUSER sudo tee /home/fleetsie/.ssh/authorized_keys
 echo Changing ownership of .ssh directory for fleetsie@$SERVER
 ssh $SSHUSER sudo chown -R fleetsie:fleetsie /home/fleetsie/.ssh/
+echo Uploading fleetsie_login and fleetsie_auth programs to fleetsie@$SERVER
+scp ./fleetsie_login ./fleetsie_auth fleetsie@$SERVER:
 echo Creating fleets.sqlite database with empty devices table
 cat | ssh fleetsie@$SERVER sqlite3 fleets.sqlite <<EOF
 CREATE TABLE devices (
@@ -109,5 +111,4 @@ CREATE TABLE devices (
 EOF
 
 echo "Created table.  You can now use fleetsie_gen to populate the table."
-
 exit 0

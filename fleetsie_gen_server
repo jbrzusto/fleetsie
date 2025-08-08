@@ -12,11 +12,30 @@ fleetsie_gen_server NUM FLEETNAME
 
 fleetsie_gen_server is the server-side script called by fleetsie_gen (which runs on a user's PC).
 
+Several databases are used:
+
+  - Master: /home/fleetsie/fleets.sqlite - all new devices are
+            allocated here, and eventually, their registration to a
+            hardware device is reflected here.
+
+  - Fleet: /home/fleetsie_FLEETNAME/fleet.sqlite - new devices are copied
+           here from Master.  This DB is used by fleetsieauth when a device is
+ 	   being provisioned, and is the first place where the (HWID, device) pairing
+ 	   is made (i.e. the device is registered).
+
+  - Provisioning: /home/fleetsie_FLEETNAME/provisioning.sqlite - a reduced version
+    of the Fleet database, with only the OTP and index_in_fleet columns.  Rows
+    represent allocated but unregistered devices for this fleet.  This is
+    updated whenever new devices are allocated to the fleet, or when devices are
+    registered.  This database is copied to the USB provisioning disk by fleetsie_gen,
+    and is used by a device that is provisioning itself.
 
 fleetsie_gen_server does these things:
 
-- if NUM > 0, N new devices are allocated to fleet FLEETNAME (provided there are enough TCP ports remaining)
+- if NUM > 0, N new devices are allocated to fleet FLEETNAME (provided there are enough TCP ports remaining),
+  and these are appended to the Master, Fleet, and Provisioning databases.
 
+- regardless of NUM, update the Master database with any new registrations from the fleet database
 
 EOF
     exit $1
@@ -36,3 +55,18 @@ MAX_TCP_PORT=29999
 # If necessary, the file /etc/sysctl.d/fleetsie can be created on the server, with this line:
 #  net.ipv4.ip_local_port_range=32768 60999
 # to keep the range away from 20000-29999.
+
+NUM="$1"
+if [[ ! "$NUM" =~ ^[0-9]+$ ]]; then
+    usage
+fi
+shift
+FLEETNAME="$1"
+if [[ ! "$FLEETNAME" =~ ^[-_[:alnum:]]+$ ]]; then
+    usage
+fi
+
+FLEETUSER="fleetsie_$FLEETNAME"
+if [[ ! if id -u test 2> /dev/null; then
+	# we set the shell to be a program that manages
+	sudo adduser --disabled-password --gecos '""' --ingroup fleetsie --shell /home/fleetsie/fleetsie_login $FLEETUSER
