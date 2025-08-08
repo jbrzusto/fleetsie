@@ -1,0 +1,38 @@
+#!/bin/bash
+
+# fleetsie_gen_server - allocate new devices for a fleet
+
+function usage() {
+    cat <<EOF
+Usage:
+
+fleetsie_gen_server NUM FLEETNAME
+
+- add NUM new devices to fleet FLEETNAME
+
+fleetsie_gen_server is the server-side script called by fleetsie_gen (which runs on a user's PC).
+
+
+fleetsie_gen_server does these things:
+
+- if NUM > 0, N new devices are allocated to fleet FLEETNAME (provided there are enough TCP ports remaining)
+
+
+EOF
+    exit $1
+}
+
+# Set the range of TCP ports that fleetsie can assign for mapping back to device SSH server ports.
+# All devices in all fleets on this server are allocated a unique port in this range.
+MIN_TCP_PORT=20000
+MAX_TCP_PORT=29999
+
+# Note: the fleet server should be kept from using these ports when creating new TCP connections
+# Typically, a linux box shows this:
+#    $ cat /proc/sys/net/ipv4/ip_local_port_range
+#    32768	60999
+# which means ports in the range 20000-29999 won't be used as ephemeral ports for outgoing connections,
+# so should be available for ssh to map.
+# If necessary, the file /etc/sysctl.d/fleetsie can be created on the server, with this line:
+#  net.ipv4.ip_local_port_range=32768 60999
+# to keep the range away from 20000-29999.
