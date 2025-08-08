@@ -189,6 +189,12 @@ fleetsie_gen creates this layout on the USB drive:
 - file containing the fleet hostname on line 1, and the fleet name on line 2
 
 ```
+/fleetsie/devices.sqlite
+```
+
+- database containing allocated but unclaimed devices for this fleet.
+
+```
 /fleetsie/fleetsieauth.pub
 /fleetsie/fleetsieauth
 ```
@@ -281,3 +287,36 @@ device presents an unused OTP password to register itself with the
 server.  It is not known in advance which physical device will end up
 registered to each pre-allocated device, but `fleetsie_auth` ensures
 that no two physical devices get registered to the same device record.
+
+## `fleetsie_gen_srv`
+
+This script runs the server-side of the `fleetsie_gen` process.
+It runs as user `fleetsie`.
+
+It manages three versions of fleet database:
+
+### **Master**
+- contains records for all allocated devices for all fleets
+- lives in /home/fleetsie/fleets.sqlite
+- new device records are created here because the set of ssh
+  tunnel ports is shared across fleets on one server.
+
+### **One-Fleet**
+- contains device records for a single fleet, `FLEET`
+- lives in `/home/fleetsie_FLEET/fleet.sqlite`
+- new device records get copied here when generated in **Master**
+- new registrations are copied from here to **Master** whenever
+  `fleetsie_gen_srv` is run for fleet `FLEET`
+- `fleetsie_auth` uses this database when a new device is provisioning
+
+### **Provisioning**
+- lives on the USB provisioning disk for a fleet
+- only contains records for (some of) the unclaimed devices in a fleet
+- each time it is used to provision a device, the corresponding record
+  is removed from the DB on the USB disk.
+
+whenever `fleetsie_gen_srv` is run for fleet FLEET, it does this:
+- if /home/fleetsie_FLEET/fleet.sqlite exists, any new registrations
+  are copied from it to /home/fleetsie/fleets.sqlite
+
+- if requested, new devices are allocated in /home/fleet
