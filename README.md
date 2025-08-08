@@ -310,13 +310,18 @@ It manages three versions of fleet database:
 - `fleetsie_auth` uses this database when a new device is provisioning
 
 ### **Provisioning**
-- lives on the USB provisioning disk for a fleet
-- only contains records for (some of) the unclaimed devices in a fleet
+- generated as `/home/fleetsie_FLEET/provisioning.sqlite`
+- only contains the `id_in_fleet` and `otp` columns
+- copied to the USB provisioning disk for a fleet by `fleetsie_gen`
+- only contains records for the unclaimed devices in a fleet
 - each time it is used to provision a device, the corresponding record
-  is removed from the DB on the USB disk.
+  is removed from the DB on the USB disk, and from
+  `/home/fleetsie_FLEET/provisioning.sqlite` on the fleet server
 
 whenever `fleetsie_gen_srv` is run for fleet FLEET, it does this:
 - if /home/fleetsie_FLEET/fleet.sqlite exists, any new registrations
   are copied from it to /home/fleetsie/fleets.sqlite
 
-- if requested, new devices are allocated in /home/fleet
+- if requested, new devices are allocated in /home/fleetsie/fleets.sqlite
+  - these are copied to /home/fleetsie_FLEET/fleet.sqlite, and to
+  -

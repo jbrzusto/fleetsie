@@ -130,9 +130,9 @@ if [[ ! $FLEETKNOWNHOST ]]; then
 	fatal "can't read known_hosts line for fleet host from from line 3 of fleetsie/fleet.txt file on USB disk"
 fi
 
-DB=devices.sqlite
+DB=provisioning.sqlite
 if [[ ! -f fleetsieauth.pub || ! -f fleetsieauth || ! -f $DB ]]; then
-    fatal "can't find one or more files needed for connecting to fleet server.\nneed:\nfleetsieauth.pub\nfleetsieauth\notp.sqlite\n"
+    fatal "can't find one or more files needed for connecting to fleet server.\nneed:\nfleetsieauth.pub\nfleetsieauth\nprovisioning.sqlite\n"
 fi
 
 info "appending known_hosts from USB drive to /root/.ssh/known_hosts"
