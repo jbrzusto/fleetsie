@@ -106,15 +106,17 @@ function die_with_usage () {
 # or dies with an error message.
 function get_arg () {
     declare -n v=$1
-    if [[ ! "$1" ]]; then
+    shift
+    if [[ "$1" == "" ]]; then
 	die_with_usage missing parameter $1
     fi
-    $v=$1
-    shift
+    v=$1
 }
 
-get_arg FLEET_NAME
-get_arg FLEET_HOST
+get_arg FLEET_NAME "$@"
+shift
+
+get_arg FLEET_HOST "$@"
 if ! ssh -v fleetsie@$FLEET_HOST date 2>/tmp/errmsg.txt 1>&2; then
     die "unable to ssh to fleetsie@$FLEET_HOST: " "`cat /tmp/errmsg.txt`"
 fi
@@ -128,47 +130,12 @@ if [[ "$1" =~ ^[0-9]+$ ]]; then
     shift
 fi
 USB_PARTITION=$1
+printf "have NUM=$NUM and USB_PARTITION=$USB_PARTITION\n"
 
 # if NUM > 0, we generate N new devices for the fleet.  This is done by running
 # a script on the server, then fetching the client version of the table for the fleet
 if [[ $NUM -gt 0 ]]; then
     printf "Adding $NUM devices to fleet $FLEET_NAME\n"
     ssh fleetsie@$FLEET_HOST ./fleetsie_gen_server $FLEET_NAME $NUM
-    scp fleetsie@$FLEET_HOST /home/fleetsie_$FLEET_NAME/provisioning
-
-
-## separate host side from client side
-coproc SQL { sqlite3 -column $CONFIG_DB 2>&1; }
-FROMSQL=${SQL[0]}
-TOSQL=${SQL[1]}
-sleep 0.1
-printf ".prompt \"\" \"\"\n" >&$TOSQL
-printf ".timeout 1000\n" >&$TOSQL
-read -t 0.1 ignore <&$FROMSQL
-read -t 0.1 ignore <&$FROMSQL
-# do_cmd runs a command in the attached sqlite database
-do_cmd() {
-    printf "%s;\n" "$1" >&$TOSQL
-}
-
-# notes on what the db looks like
-# create table devices (
-#     id integer unique primary key not null,
-#     fleet string,
-#     fleetuser string,
-#     hostname string,
-#     hwid string,
-#     otp string,
-#     ts_generated double,
-#     ts_provisioned double,
-#     tunnel_port integer,
-#     public_key string,
-#     private_key string,
-#     ip_provisioned_from
-# );
-# create unique index on devices(hwid);
-# create unique index on devices(fleet,otp,hwid);
-
-# Entries in this table are created by fleetsie_gen.  For each entry, the missing fields are
-# ts_provisioned, ip_provisioned_from, and hwid.  These are determined by the provisioning
-# race.
+    scp fleetsie@$FLEET_HOST:/homee/fleetsie_$FLEET_NAME/provisioning .
+fi

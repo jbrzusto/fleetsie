@@ -53,6 +53,6 @@ cat ${TARGFILE}.pub | ssh $SSHUSER sudo tee /home/fleetsie/.ssh/authorized_keys
 echo Changing ownership of .ssh directory for fleetsie@$SERVER
 ssh $SSHUSER sudo chown -R fleetsie:fleetsie /home/fleetsie/.ssh/
 echo Uploading fleetsie_login and fleetsie_auth programs to fleetsie@$SERVER
-scp ./fleetsie_login ./fleetsie_auth fleetsie@$SERVER:
-ssh fleetsie@$SERVER chmod g-w fleetsie_login fleetsie_auth
+scp ./fleetsie_login ./fleetsie_auth ./fleetsie_gen_server fleetsie@$SERVER:
+ssh fleetsie@$SERVER chmod g-w fleetsie_login fleetsie_auth fleetsie_gen_server
 exit 0
