@@ -99,6 +99,8 @@ if ! id -u $FLEETUSER 2> /dev/null ; then
     sudo mkdir $FLEETDIR/.ssh
     sudo touch $FLEETDIR/.ssh/authorized_keys
     sudo chown -R $FLEETUSER:$FLEETUSER $FLEETDIR/.ssh
+    printf "New user $FLEETUSER created; fleetsie_gen_server being re-run.\n"
+    exit 1
 fi
 
 FLEETDIR=/home/$FLEETUSER
@@ -113,7 +115,7 @@ for DB in "$MAINDB" "$FLEETDB"; do
 	continue
     fi
     printf "Creating database $DB...\n"
-    cat | sqlite3_do <<EOF
+    sqlite_do '
 CREATE TABLE devices (
      id INTEGER UNIQUE PRIMARY KEY NOT NULL,  -- unique ID for device, across all fleets
      fleet VARCHAR NOT NULL,                  -- name of fleet device belongs to
@@ -134,7 +136,7 @@ CREATE TABLE devices (
 CREATE UNIQUE INDEX devices_hwid ON devices(hwid);
 CREATE UNIQUE INDEX devices_fleet_otp_hwid ON devices(fleet, otp, hwid);
 CREATE UNIQUE INDEX devices_fleet_id_in_fleet ON devices(fleet, id_in_fleet);
-EOF
+'
     if [[ "$DB" == "$FLEETDB" ]]; then
 	sudo chown $FLEETUSER:$FLEETUSER $DB
 	sudo chmod g+w $DB
@@ -145,12 +147,12 @@ done
 DB="$PROVISIONINGDB"
 if [[ ! -f "$DB" ]]; then
     printf "Creating provisioning database for fleet $FLEETNAME...\n"
-    cat | sqlite3_do <<EOF
+    sqlite_do '
 CREATE TABLE devices (
      id_in_fleet INTEGER UNIQUE PRIMARY KEY NOT NULL, -- unique ID for device within fleet
      otp VARCHAR NOT NULL                             -- one-time password used to register as this device
  );
-EOF
+'
     sudo chown $FLEETUSER:$FLEETUSER $DB
     sudo chmod g+w $DB
 fi
@@ -158,6 +160,9 @@ DB="$MAINDB"
 
 # get max id used
 sqlite next_id "select 1 + max(id) from devices"
+if [[ "$next_id" == "" ]]; then
+    next_id=1
+fi
 
 # get max port used
 sqlite next_port "select 1 + max(tunnel_port) from devices"
@@ -166,7 +171,7 @@ if [[ "$next_port" == "" ]]; then
 fi
 
 # get max id used in fleet
-sqlite max_id_in_fleet "select 1 + max(id_in_fleet) from devices where fleet='$FLEETNAME'"
+sqlite next_id_in_fleet "select 1 + max(id_in_fleet) from devices where fleet='$FLEETNAME'"
 if [[ "$next_id_in_fleet" == "" ]]; then
     next_id_in_fleet=1
 fi
@@ -180,14 +185,15 @@ while [[ $NUM -gt 0 ]]; do
     HOSTNAME=${FLEETNAME}-$next_id_in_fleet
     # generate keys for logging into the server from the device
     srv_ssh_key_file=$FLEETDIR/.ssh/id_ed25519_$HOSTNAME
-    sudo ssh-keygen -P "" -t ed25519 -f $srv_ssh_key_file
+    sudo ssh-keygen -P "" -t ed25519 -C "fleetsie_$FLEETNAME@`hostname`" -f $srv_ssh_key_file > /dev/null
     sudo chown $FLEETUSER:$FLEETUSER $srv_ssh_key_file $srv_ssh_key_file.pub
     SRVPRIVKEY=`sudo cat $srv_ssh_key_file`
     SRVPUBKEY=`sudo cat ${srv_ssh_key_file}.pub`
-    sudo cat ${srv_ssh_key_file}.pub | sudo tee -a $FLEETDIR/.ssh/authorized_keys > /dev/null
+    AUTHKEYPREFIX="command=\"/usr/bin/setsid -w /home/fleetsie/fleetsie_login\",environment=\"FLEETSIE_FLEET=$FLEET\",environment=\"FLEETSIE_HOST=$HOSTNAME\",environment=\"FLEETSIE_PORT=$next_port\",no-X11-forwarding,permitlisten=\"localhost:$next_port\",permitopen=\"localhost:10051\",no-agent-forwarding"
+    printf "%s %s\n" "$AUTHKEYPREFIX" "$SRVPUBKEY" | sudo tee -a $FLEETDIR/.ssh/authorized_keys > /dev/null
     # generate keys for logging into the device from the server
     dev_ssh_key_file=$FLEETDIR/.ssh/id_ed25519_${HOSTNAME}_dev
-    sudo ssh-keygen -P "" -t ed25519 -f $dev_ssh_key_file
+    sudo ssh-keygen -P "" -t ed25519 -C "`hostname`@$HOSTNAME" -f $dev_ssh_key_file  > /dev/null
     sudo chown $FLEETUSER:$FLEETUSER $dev_ssh_key_file $dev_ssh_key_file.pub
     DEVPRIVKEY=`sudo cat $dev_ssh_key_file`
     DEVPUBKEY=`sudo cat ${dev_ssh_key_file}.pub`
@@ -208,4 +214,15 @@ done
 
 # update Main DB with registrations from Fleet DB
 DB="$MAINDB"
-sqlite_do "attach database '$FLEETDB' as 'db1'; update devices set hwid=reg.hwid, ts_registered=reg.ts_registered, ip_provisioned_from=reg.ip_provisoned_from from (select id, hwid, ts_provisioned, ip_provisioned_from from db1.devices where hwid is not null and fleet='$FLEETNAME') as reg where id=reg.id and hwid is null)"
+sqlite_do "
+attach database '$FLEETDB' as 'db1';
+update devices set
+  hwid=reg.hwid,
+  ts_registered=reg.ts_registered,
+  ip_provisioned_from=reg.ip_provisioned_from
+from (
+  select id, hwid, ts_registered, ip_provisioned_from
+  from db1.devices
+  where hwid is not null and fleet='$FLEETNAME') as reg
+where devices.id=reg.id and devices.hwid is null
+"

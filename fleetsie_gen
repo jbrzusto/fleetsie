@@ -139,5 +139,7 @@ PROVISIONING_DB=/home/fleetsie/provisioning_$FLEET_NAME.sqlite
 # run the server-side fleetsie_gen_server script, even if $NUM==0,
 # because it also syncs databases
 printf "Adding $NUM devices to fleet $FLEET_NAME and syncing DBs\n"
-ssh -t fleetsie@$FLEET_HOST ./fleetsie_gen_server $NUM $FLEET_NAME
+if ! ssh -t fleetsie@$FLEET_HOST ./fleetsie_gen_server $NUM $FLEET_NAME; then
+    ssh -t fleetsie@$FLEET_HOST ./fleetsie_gen_server $NUM $FLEET_NAME
+fi
 scp fleetsie@$FLEET_HOST:$PROVISIONING_DB .
