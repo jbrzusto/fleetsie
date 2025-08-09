@@ -65,7 +65,7 @@ function sqlite_do() {
 
 # Set the range of TCP ports that fleetsie can assign for mapping back to device SSH server ports.
 # All devices in all fleets on this server are allocated a unique port in this range.
-MIN_TCP_PORT=20000
+MIN_TCP_PORT=20001
 MAX_TCP_PORT=29999
 
 # Note: the fleet server should be kept from using these ports when creating new TCP connections
@@ -99,7 +99,7 @@ if ! id -u $FLEETUSER 2> /dev/null ; then
     sudo mkdir $FLEETDIR/.ssh
     sudo touch $FLEETDIR/.ssh/authorized_keys
     sudo chown -R $FLEETUSER:$FLEETUSER $FLEETDIR/.ssh
-    printf "@reboot root /bin/bash -c 'mkdir -p /run/fleetsie/dev/$FLEETNAME && chown $FLEETUSER:$FLEETUSER /run/fleetsie/dev/$FLEETNAME'" | sudo tee /etc/cron.d/${FLEETUSER}_boot > /dev/null
+    printf "@reboot root /bin/bash -c 'mkdir -p /run/fleetsie/dev/$FLEETNAME && chown $FLEETUSER:$FLEETUSER /run/fleetsie/dev/$FLEETNAME'\n" | sudo tee /etc/cron.d/${FLEETUSER}_boot > /dev/null
     printf "New user $FLEETUSER created; fleetsie_gen_server being re-run.\n"
     exit 1
 fi
