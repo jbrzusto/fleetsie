@@ -27,11 +27,14 @@ if ! ssh $SSHUSER date > /dev/null 2>/tmp/error.txt; then
 fi
 
 echo Confirmed that $SSHUSER is valid.
-echo Installing any missing packages...
-ssh $SSHUSER sudo apt-get update
-ssh $SSHUSER sudo apt install sqlite3
-echo Creating user fleetsie...
-ssh $SSHUSER sudo adduser --disabled-password --gecos '""' fleetsie
+if [[ ! sqlite3 -version ]]; then
+    echo Installing missing packages...
+    ssh $SSHUSER sudo apt-get update
+    ssh $SSHUSER sudo apt install sqlite3
+fi
+echo Creating user fleetsie - you will need to enter a new password twice...
+ssh $SSHUSER sudo adduser  --gecos '""' fleetsie
+ssh $SSHUSER sudo usermod -a -G sudo fleetsie
 echo Generating ssh keys for user fleetsie
 TARGFILE=~/.ssh/id_ed25519_fleetsie_$SERVER
 ssh-keygen -P "" -t ed25519 -f $TARGFILE
