@@ -61,6 +61,9 @@ Host $SERVER
 EOF
 	fi
     fi
+    echo Making home folder listable by others, so that
+    echo fleet users can run executables from it.
+    ssh $SSHUSER chmod o+x .
     echo Adding new key to authorized_keys file for $FLEETSIE_SSHUSER
     ssh $SSHUSER sudo mkdir -p /home/fleetsie/.ssh
     cat ${TARGFILE}.pub | ssh $SSHUSER sudo tee /home/fleetsie/.ssh/authorized_keys > /dev/null
