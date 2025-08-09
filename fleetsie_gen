@@ -117,6 +117,8 @@ get_arg FLEET_NAME "$@"
 shift
 
 get_arg FLEET_HOST "$@"
+shift
+
 if ! ssh -v fleetsie@$FLEET_HOST date 2>/tmp/errmsg.txt 1>&2; then
     die "unable to ssh to fleetsie@$FLEET_HOST: " "`cat /tmp/errmsg.txt`"
 fi
@@ -132,10 +134,10 @@ fi
 USB_PARTITION=$1
 printf "have NUM=$NUM and USB_PARTITION=$USB_PARTITION\n"
 
-# if NUM > 0, we generate N new devices for the fleet.  This is done by running
-# a script on the server, then fetching the client version of the table for the fleet
-if [[ $NUM -gt 0 ]]; then
-    printf "Adding $NUM devices to fleet $FLEET_NAME\n"
-    ssh fleetsie@$FLEET_HOST ./fleetsie_gen_server $FLEET_NAME $NUM
-    scp fleetsie@$FLEET_HOST:/homee/fleetsie_$FLEET_NAME/provisioning .
-fi
+PROVISIONING_DB=/home/fleetsie/provisioning_$FLEET_NAME.sqlite
+
+# run the server-side fleetsie_gen_server script, even if $NUM==0,
+# because it also syncs databases
+printf "Adding $NUM devices to fleet $FLEET_NAME and syncing DBs\n"
+ssh -t fleetsie@$FLEET_HOST ./fleetsie_gen_server $NUM $FLEET_NAME
+scp fleetsie@$FLEET_HOST:$PROVISIONING_DB .

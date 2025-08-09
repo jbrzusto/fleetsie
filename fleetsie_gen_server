@@ -16,16 +16,17 @@ It is *NOT* safe for concurrent use.
 
 Several databases are used:
 
-  - Master: /home/fleetsie/fleets.sqlite - all new devices are
-            allocated here, and eventually, their registration to a
-            hardware device is reflected here.
+  - Main: /home/fleetsie/fleets.sqlite - all new devices are
+          allocated here, and eventually, their registration to a
+          hardware device is reflected here.
 
-  - Fleet: /home/fleetsie_FLEETNAME/fleet.sqlite - new devices are copied
-           here from Master.  This DB is used by fleetsieauth when a device is
+  - Fleet: /home/fleetsie/fleet_FLEETNAME.sqlite - new devices are copied
+           here from Main.  This DB is used by fleetsieauth when a device is
  	   being provisioned, and is the first place where the (HWID, device) pairing
- 	   is made (i.e. the device is registered).
+ 	   is made (i.e. the device is registered).  This DB is owned by user
+	   fleetsie_FLEETNAME
 
-  - Provisioning: /home/fleetsie_FLEETNAME/provisioning.sqlite - a reduced version
+  - Provisioning: /home/fleetsie/provisioning_FLEETNAME.sqlite - a reduced version
     of the Fleet database, with only the OTP and index_in_fleet columns.  Rows
     represent allocated but unregistered devices for this fleet.  This is
     updated whenever new devices are allocated to the fleet, or when devices are
@@ -37,9 +38,9 @@ fleetsie_gen_server does these things:
 - if user fleetsie_FLEETNAME does not exist, creates it.
 
 - if NUM > 0, N new devices are allocated to fleet FLEETNAME (provided there are enough TCP ports remaining),
-  and these are appended to the Master, Fleet, and Provisioning databases.
+  and these are appended to the Main, Fleet, and Provisioning databases.
 
-- regardless of NUM, update the Master database with any new registrations from the fleet database
+- regardless of NUM, update the Main database with any new registrations from the Fleet database
 
 EOF
     exit $1
@@ -54,6 +55,12 @@ function sqlite() {
     declare -n v=$1
     shift
     read v < <( sqlite3 $DB "$*" )
+}
+
+# sqlite_do runs a non-select query on the sqlite database DB and
+# prints any output
+function sqlite_do() {
+    sqlite3 $DB "$*"
 }
 
 # Set the range of TCP ports that fleetsie can assign for mapping back to device SSH server ports.
@@ -82,23 +89,31 @@ if [[ ! "$FLEETNAME" =~ ^[-_[:alnum:]]+$ ]]; then
 fi
 
 FLEETUSER="fleetsie_$FLEETNAME"
-if [[ ! if id -u test 2> /dev/null ]] ; then
+FLEETDIR=/home/$FLEETUSER
+if ! id -u $FLEETUSER 2> /dev/null ; then
     # we set the shell to be a program that maintains a structure in /run that reflects which devices are connected
-    sudo adduser --disabled-password --gecos '""' --ingroup fleetsie --shell /home/fleetsie/fleetsie_login $FLEETUSER
+    printf "Creating user $FLEETUSER...\n"
+    sudo adduser --disabled-password --gecos '""' --shell /home/fleetsie/fleetsie_login $FLEETUSER
+    # add the group for new user to groups for user fleetsie
+    sudo usermod -a -G $FLEETUSER fleetsie
+    sudo mkdir $FLEETDIR/.ssh
+    sudo touch $FLEETDIR/.ssh/authorized_keys
+    sudo chown -R $FLEETUSER:$FLEETUSER $FLEETDIR/.ssh
 fi
 
 FLEETDIR=/home/$FLEETUSER
 
-MASTERDB="/home/fleetsie/fleets.sqlite"
-FLEETDB="$FLEETDIR/fleet.sqlite"
-PROVISIONINGDB="$FLEETDIR/provisioning.sqlite"
+MAINDB="/home/fleetsie/fleets.sqlite"
+FLEETDB="/home/fleetsie/fleet_$FLEETNAME.sqlite"
+PROVISIONINGDB="/home/fleetsie/provisioning_$FLEETNAME.sqlite"
 
-# create MASTER and FLEET DBs if they don't exist
-for DB in "$MASTERDB" "$FLEETDB"; do
+# create MAIN and FLEET DBs if they don't exist
+for DB in "$MAINDB" "$FLEETDB"; do
     if [[ -f $DB ]]; then
 	continue
     fi
-    cat | sqlite3 $DB <<EOF
+    printf "Creating database $DB...\n"
+    cat | sqlite3_do <<EOF
 CREATE TABLE devices (
      id INTEGER UNIQUE PRIMARY KEY NOT NULL,  -- unique ID for device, across all fleets
      fleet VARCHAR NOT NULL,                  -- name of fleet device belongs to
@@ -114,23 +129,32 @@ CREATE TABLE devices (
      device_private_key VARCHAR NOT NULL,     -- private key which can be used to login as user 1000 on device
      server_public_key VARCHAR NOT NULL,      -- public key which device will use to ssh into fleet server
      server_private_key VARCHAR NOT NULL,     -- private key which device will use to ssh into fleet server
-     ip_provisioned_from VARCHAR NOT NULL     -- IP address from which request to provision this device originated
+     ip_provisioned_from VARCHAR              -- IP address from which request to provision this device originated
  );
 CREATE UNIQUE INDEX devices_hwid ON devices(hwid);
 CREATE UNIQUE INDEX devices_fleet_otp_hwid ON devices(fleet, otp, hwid);
 CREATE UNIQUE INDEX devices_fleet_id_in_fleet ON devices(fleet, id_in_fleet);
 EOF
+    if [[ "$DB" == "$FLEETDB" ]]; then
+	sudo chown $FLEETUSER:$FLEETUSER $DB
+	sudo chmod g+w $DB
+    fi
 done
 
 # create PROVISIONING DB if it doesn't exist
-if [[ ! -f "$PROVISIONINGDB" ]]; then
-    cat | sqlite3 $PROVISIONINGDB <<EOF
+DB="$PROVISIONINGDB"
+if [[ ! -f "$DB" ]]; then
+    printf "Creating provisioning database for fleet $FLEETNAME...\n"
+    cat | sqlite3_do <<EOF
 CREATE TABLE devices (
      id_in_fleet INTEGER UNIQUE PRIMARY KEY NOT NULL, -- unique ID for device within fleet
-     otp VARCHAR NOT NULL,                            -- one-time password used to register as this device
+     otp VARCHAR NOT NULL                             -- one-time password used to register as this device
  );
 EOF
-DB="$MASTERDB"
+    sudo chown $FLEETUSER:$FLEETUSER $DB
+    sudo chmod g+w $DB
+fi
+DB="$MAINDB"
 
 # get max id used
 sqlite next_id "select 1 + max(id) from devices"
@@ -156,28 +180,32 @@ while [[ $NUM -gt 0 ]]; do
     HOSTNAME=${FLEETNAME}-$next_id_in_fleet
     # generate keys for logging into the server from the device
     srv_ssh_key_file=$FLEETDIR/.ssh/id_ed25519_$HOSTNAME
-    ssh-keygen -P "" -t ed25519 -f $srv_ssh_key_file
-    SRVPRIVKEY=`cat $srv_ssh_key_file`
-    SRVPUBKEY=`cat ${srv_ssh_key_file}.pub`
+    sudo ssh-keygen -P "" -t ed25519 -f $srv_ssh_key_file
+    sudo chown $FLEETUSER:$FLEETUSER $srv_ssh_key_file $srv_ssh_key_file.pub
+    SRVPRIVKEY=`sudo cat $srv_ssh_key_file`
+    SRVPUBKEY=`sudo cat ${srv_ssh_key_file}.pub`
+    sudo cat ${srv_ssh_key_file}.pub | sudo tee -a $FLEETDIR/.ssh/authorized_keys > /dev/null
     # generate keys for logging into the device from the server
     dev_ssh_key_file=$FLEETDIR/.ssh/id_ed25519_${HOSTNAME}_dev
-    ssh-keygen -P "" -t ed25519 -f $dev_ssh_key_file
-    DEVPRIVKEY=`cat $dev_ssh_key_file`
-    DEVPUBKEY=`cat ${dev_ssh_key_file}.pub`
+    sudo ssh-keygen -P "" -t ed25519 -f $dev_ssh_key_file
+    sudo chown $FLEETUSER:$FLEETUSER $dev_ssh_key_file $dev_ssh_key_file.pub
+    DEVPRIVKEY=`sudo cat $dev_ssh_key_file`
+    DEVPUBKEY=`sudo cat ${dev_ssh_key_file}.pub`
     OTP=`od -N 128 -w256 -t x1 -A none /dev/urandom | tr -d ' '`
     TS_GEN=`date +%s`
-    DB=MASTERDB
-    sqlite resp "insert into devices(id, fleet, id_in_fleet, fleetuser, hostname, otp, ts_generated, tunnel_port, device_public_key, device_private_key, server_public_key, server_private_key) values(next_id, '$FLEETNAME', $next_id_in_fleet, '$FLEETUSER', '$HOSTNAME', '$OTP', '$TS_GEN', '$next_port','$DEVPUBKEY', '$DEVPRIVKEY', '$SRVPUBKEY', '$SRVPRIVKEY');"
-    DB=FLEETDB
-    sqlite resp "insert into devices(id, fleet, id_in_fleet, fleetuser, hostname, otp, ts_generated, tunnel_port, device_public_key, device_private_key, server_public_key, server_private_key) values(next_id, '$FLEETNAME', $next_id_in_fleet, '$FLEETUSER', '$HOSTNAME', '$OTP', '$TS_GEN', '$next_port','$DEVPUBKEY', '$DEVPRIVKEY', '$SRVPUBKEY', '$SRVPRIVKEY');"
-    DB=PROVISIONINGDB
-    sqlite resp "insert into devices(id_in_fleet, otp) values($next_id_in_fleet, '$OTP');"
+    DB="$MAINDB"
+    sqlite_do "insert into devices(id, fleet, id_in_fleet, fleetuser, hostname, otp, ts_generated, tunnel_port, device_public_key, device_private_key, server_public_key, server_private_key) values($next_id, '$FLEETNAME', $next_id_in_fleet, '$FLEETUSER', '$HOSTNAME', '$OTP', '$TS_GEN', '$next_port','$DEVPUBKEY', '$DEVPRIVKEY', '$SRVPUBKEY', '$SRVPRIVKEY');"
+    DB="$FLEETDB"
+    sqlite_do "insert into devices(id, fleet, id_in_fleet, fleetuser, hostname, otp, ts_generated, tunnel_port, device_public_key, device_private_key, server_public_key, server_private_key) values($next_id, '$FLEETNAME', $next_id_in_fleet, '$FLEETUSER', '$HOSTNAME', '$OTP', '$TS_GEN', '$next_port','$DEVPUBKEY', '$DEVPRIVKEY', '$SRVPUBKEY', '$SRVPRIVKEY');"
+    DB="$PROVISIONINGDB"
+    sqlite_do "insert into devices(id_in_fleet, otp) values($next_id_in_fleet, '$OTP');"
     next_id_in_fleet=$(( $next_id_in_fleet + 1 ))
     next_port=$(( $next_port + 1 ))
     next_id=$(( $next_id + 1 ))
     printf "Generated device %s\n" $HOSTNAME
+    NUM=$(( $NUM - 1 ))
 done
 
-# update Master DB with registrations from Fleet DB
-DB=MASTERDB
-sqlite resp "attach database '$FLEETDB' as 'db1'; update devices set hwid=reg.hwid, ts_registered=reg.ts_registered, ip_provisioned_from=reg.ip_provisoned_from from (select id, hwid, ts_provisioned, ip_provisioned_from from db1.devices where hwid is not null and fleet='$FLEETNAME') as reg where id=reg.id and hwid is null)"
+# update Main DB with registrations from Fleet DB
+DB="$MAINDB"
+sqlite_do "attach database '$FLEETDB' as 'db1'; update devices set hwid=reg.hwid, ts_registered=reg.ts_registered, ip_provisioned_from=reg.ip_provisoned_from from (select id, hwid, ts_provisioned, ip_provisioned_from from db1.devices where hwid is not null and fleet='$FLEETNAME') as reg where id=reg.id and hwid is null)"

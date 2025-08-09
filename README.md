@@ -295,33 +295,35 @@ It runs as user `fleetsie`.
 
 It manages three versions of fleet database:
 
-### **Master**
+### **Main**
 - contains records for all allocated devices for all fleets
 - lives in /home/fleetsie/fleets.sqlite
 - new device records are created here because the set of ssh
   tunnel ports is shared across fleets on one server.
 
-### **One-Fleet**
+### **Fleet**
 - contains device records for a single fleet, `FLEET`
-- lives in `/home/fleetsie_FLEET/fleet.sqlite`
-- new device records get copied here when generated in **Master**
-- new registrations are copied from here to **Master** whenever
+- lives in `/home/fleetsie/fleet_FLEET.sqlite`
+- owned by user `fleetsie_FLEET`
+- new device records get copied here when generated in **Main**
+- new registrations are copied from here to **Main** whenever
   `fleetsie_gen_srv` is run for fleet `FLEET`
 - `fleetsie_auth` uses this database when a new device is provisioning
 
 ### **Provisioning**
-- generated as `/home/fleetsie_FLEET/provisioning.sqlite`
+- generated as `/home/fleetsie/provisioning_FLEET.sqlite`
 - only contains the `id_in_fleet` and `otp` columns
+- owned by user `fleetsie_FLEET`
 - copied to the USB provisioning disk for a fleet by `fleetsie_gen`
 - only contains records for the unclaimed devices in a fleet
 - each time it is used to provision a device, the corresponding record
   is removed from the DB on the USB disk, and from
-  `/home/fleetsie_FLEET/provisioning.sqlite` on the fleet server
+  `/home/fleetsie/provisioning_FLEET.sqlite` on the fleet server
 
 whenever `fleetsie_gen_srv` is run for fleet FLEET, it does this:
-- if /home/fleetsie_FLEET/fleet.sqlite exists, any new registrations
-  are copied from it to /home/fleetsie/fleets.sqlite
+- if the One-Fleet database for FLEET exists, any new registrations
+  are copied from it to the Main database.
 
-- if requested, new devices are allocated in /home/fleetsie/fleets.sqlite
-  - these are copied to /home/fleetsie_FLEET/fleet.sqlite, and to
-  -
+- if requested, new devices are allocated in the Main database
+  - these are copied to the Fleet database
+  - the reduced records (`id_in_fleet`, `otp`) are copied to the Provisioning database
