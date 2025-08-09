@@ -99,6 +99,7 @@ if ! id -u $FLEETUSER 2> /dev/null ; then
     sudo mkdir $FLEETDIR/.ssh
     sudo touch $FLEETDIR/.ssh/authorized_keys
     sudo chown -R $FLEETUSER:$FLEETUSER $FLEETDIR/.ssh
+    printf "@reboot root /bin/bash -c 'mkdir -p /run/fleetsie/dev/$FLEETNAME && chown $FLEETUSER:$FLEETUSER /run/fleetsie/dev/$FLEETNAME'" | sudo tee /etc/cron.d/${FLEETUSER}_boot > /dev/null
     printf "New user $FLEETUSER created; fleetsie_gen_server being re-run.\n"
     exit 1
 fi
