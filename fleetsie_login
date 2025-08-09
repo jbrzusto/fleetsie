@@ -12,9 +12,9 @@
 # This script is forced to run when the device ssh's in by the
 # clause `command="/home/fleetsie/fleetsie_login"` in the corresponding
 # line in /home/fleetsie_FLEET/.ssh/authorized_keys. That line also includes
-# clauses to set environment variables "FLEETSIE_HOST" and "FLEETSIE_PORT".
+# clauses to set environment variables "FLEETSIE_FLEET", "FLEETSIE_HOST" and "FLEETSIE_PORT".
 
-LINKDIR=/run/fleetsie/dev
+LINKDIR=/run/fleetsie/dev/$FLEETSIE_FLEET
 LINK=$LINKDIR/$FLEETSIE_HOST
 LINKTARGET=$FLEETSIE_PORT
 
