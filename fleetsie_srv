@@ -28,7 +28,7 @@ fi
 
 echo Confirmed that $SSHUSER is valid.
 printf "Ensuring required packages are installed...\n"
-PACKAGES="sqlite3 rsync"
+PACKAGES="cron sqlite3 rsync"
 for p in $PACKAGES; do
     if ! ssh $SSHUSER dpkg -l $p > /dev/null 2>&1; then
 	# just install all so we only call update once
