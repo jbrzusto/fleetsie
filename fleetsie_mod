@@ -189,7 +189,6 @@ function save_image () {
 	mkdir -p .new_image/part_$i
 	sudo mount ${PART} .new_image/part_$i
 	make_part_names $i
-	printf "Doing rsync -a from $merged to .new_image/part_$i\n"
 	safe_rsync "$merged/" .new_image/part_$i/ -a || true
 	sudo umount ${PART}
 	i=$(( $i + 1 ))
@@ -250,7 +249,6 @@ function update_sd () {
 	    printf "mounted /dev/$p on $mp"
 	fi
 	make_part_names $i
-	printf "doing rsync -a $merged/ $mp/\n"
 	safe_rsync $merged/ $mp/ -a || true
 	printf "rsync done - check for errors, though; unmounting %s\n" $mp
 	sudo umount $mp
