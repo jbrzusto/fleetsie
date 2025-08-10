@@ -215,16 +215,39 @@ fleetsie_gen creates this layout on the USB drive:
   zabbix data port on the fleet server.
 
 ```
-/fleetsie/customize/setup
+/fleetsie/custom
 ```
 
-   - the `customize` folder is where fleetsie looks for other files
-     you want to install.  If a `setup` script is found there, then it
-     is run from within that directory run after all other
-     provisioning steps have succeeded.  `fleetsie_provision` ignores
-     all other files and subdirectories of /fleetsie/custom, so you
-     can populated it with whatever directories and files are needed
-     by your `setup` script.
+- this folder is for any other files or directories you want to provide
+to the provisioning process.  There are 3 files with special meanings
+for `fleetsie_provision`:
+
+```
+   /fleetsie/custom/setup
+```
+
+- if this script is found, then it is run from within the `fleetsie/custom`
+  directory after the preceding provisioning steps have succeeded.
+
+```
+   /fleetsie/custom/overlay.tar.xz
+```
+
+- if this file is found, then it is uncompressed and extracted to the
+  root directory (`/`).  This happens as user `root`, so all parts of
+  the system can potentially be overwritten - use with care!
+
+```
+   /fleetsie/custom/cleanup
+```
+
+- if this script is found, then it is run from within the `fleetsie`
+  directory run after all other provisioning steps, including `setup`
+  and extraction of `overlay.tar.xz`
+
+`fleetsie_provision` ignores all other files and subdirectories
+in the `fleetsie/custom` directory, so you can populated it with whatever
+is needed by your `setup` and `cleanup` scripts.
 
 EOF
     exit 1

@@ -29,14 +29,50 @@ function warning() {
     fi
 }
 
-# on info, write any supplied arguments to $LOGFILE, if defined
-function warning() {
+# write any supplied arguments to $LOGFILE, if defined
+function info() {
     if [[ "$LOGFILE" ]]; then
 	echo "$*" >> $LOGFILE
 	echo >> $lOGFILE
 	sync
     fi
 }
+
+RED_LED=/sys/class/leds/PWR/brightness
+RED_CTRL=/sys/class/leds/PWR/trigger
+GRN_LED=/sys/class/leds/ACT/brightness
+GRN_CTRL=/sys/class/leds/ACT/trigger
+
+function grnctrl() {
+    printf "$1\n" > $GRN_CTRL
+}
+
+function grnled() {
+    printf "$1\n" > $GRN_LED
+}
+
+function redled() {
+    printf "$1\n" > $RED_LED
+}
+
+function redctrl() {
+    printf "$1\n" > $RED_CTRL
+}
+
+function doneprov() {
+    grnctrl none; redctrl none
+    while true; do
+	redled 1; grnled 1; sleep .2
+	redled 0; grnled 0; sleep .2
+	redled 1;           sleep .2
+	redled 0;           sleep .2
+	redled 1;           sleep .2
+	redled 0;           sleep .2
+    done
+}
+
+# get unique HWID for this device
+HWID=`cat /sys/class/net/eth0/address`
 
 # wait for systemctl to have brought up all the usual units
 systemctl is-system-running --wait
@@ -59,6 +95,14 @@ mkdir /tmp/usb
 mounted=""
 tmp=`mktemp -d`
 for PART in `grep sda[0-9]$ /proc/partitions | awk '{print $4}'`; do
+    mp=`findmnt -no TARGET $PART`
+    if [[ "$mp" ]]; then
+	 if [[ -d "$mp/fleetsie" ]]; then
+	     tmp=mp
+	     break
+	 fi
+	 continue
+    fi
     if mount /dev/$PART $tmp; then
 	## check for fleetsie directory on this partition
 	if [[ -d $tmp/fleetsie ]]; then
@@ -75,7 +119,7 @@ fi
 
 cd $tmp/fleetsie
 LOGFILE="fleetsie_provisioning_log.txt"
-printf "\nprovisioning started from $PART at %s\n" `date` >> $LOGFILE
+printf "\nprovisioning started on device %s from $PART at %s\n" $HWID `date` >> $LOGFILE
 
 ## try provision wifi
 if [[ ! -f "wifi.txt" ]]; then
@@ -101,7 +145,7 @@ con=""
             info "Could not connect WiFi to $ESSID; error was $CONRES"
 	fi
     done
- } < wifi.txt
+ } < <( awk '{print $0}' wifi.txt )
 
 if [[ $con != 1 ]]; then
     fatal "unable to connect to any WiFi networks given in wifi.txt"
@@ -147,7 +191,6 @@ user1000=`id -nu 1000`
 
 info "sshing to fleet server $FLEETHOST"
 
-SERNO=`cat /sys/class/net/eth0/address`
 REPLY_FILE=/tmp/fleetsieauth.txt
 ERROR_FILE=/tmp/fleetsieauth.err
 while true; do
@@ -155,7 +198,7 @@ while true; do
     if [[ "$OTP" == "" ]]; then
 	fatal "no devices left in $DB - contact an administrator for more"
     fi
-    if !  printf "%s\n%s\n" "$SERNO" "$OTP" | \
+    if !  printf "%s\n%s\n" "$HWID" "$OTP" | \
 	    ssh -oStrictHostKeyChecking=true -i /root/.ssh/fleetsieauth fleetsie_$FLEETNAME@$FLEETHOST \
 		> $REPLY_FILE 2> $ERROR_FILE; then
 	fatal "error trying to ssh to $FLEETHOST: `cat ERROR_FILE`"
@@ -212,8 +255,8 @@ EOF
     } < $REPLY_FILE
 done
 
-if [[ -d customize ]]; then
-    info "entering customize directory"
+if [[ -d custom ]]; then
+    info "entering customization directory"
     if [[ -f setup ]]; then
 	info "running customize/setup"
 	if . ./setup 2>/tmp/setuplog.txt; then
@@ -224,7 +267,30 @@ if [[ -d customize ]]; then
     else
 	info "no setup script found."
     fi
+    if [[ -f overlay.tar.xz ]]; then
+	info "extracting overlay.tar.xz to /"
+	if tar -C / -xJvf overlay.tar.xz 2>/tmp/overlaylog.txt; then
+	    info "overlay extraction completed successfully."
+	else
+	    info "error while extracting overlay: `cat /tmp/overlaylog.txt`"
+	fi
+    else
+	info "no overlay.tar.xz archive found"
+    fi
+    if [[ -f cleanup ]]; then
+	info "running customize/cleanup"
+	if . ./setup 2>/tmp/cleanuplog.txt; then
+	    info "cleanup completed successfully."
+	else
+	    info "error while running cleanup: `cat /tmp/cleanuplog.txt`"
+	fi
+    else
+	info "no cleanup script found."
+    fi
+
 else
     info "no customize directory on USB disk; provisioning done."
 fi
 info "provisioning ended at `date`"
+umount $tmp
+doneprov

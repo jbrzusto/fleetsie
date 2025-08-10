@@ -41,7 +41,10 @@ where
    If USB_PARTITION begins with a "/", it is treated as a path to a
    directory, and fleetsie_gen will create or use a subdirectory there
    called "fleetsie" as the destination for installing files, rather
-   than a disk partition. This can be used for testing.
+   than a disk partition. This can be used for testing.  Otherwise,
+   it must be the name of a device with a disk partition where you
+   want to create/update the fleetsie provisioning folder.
+   e.g. "sda1"
 
    If both NUM and USB_PARTITION are missing, fleetsie_gen verifies
    that it can ssh as fleetsie@FLEET_HOST, then exits.
@@ -82,11 +85,11 @@ fleetsie_gen creates this layout on the USB drive:
      with a port mapped from the server back to the local ssh server; also maintains
      a local port which maps to the zabbix data port on the fleet server.
 
-  /fleetsie/custom/setup
+  /fleetsie/custom
 
-   - the custom folder is where fleetsie looks for other files you want to install.
-     The setup script will be run after all other provisioning steps have succeeded.
-     fleetsie ignores all other files and subdirectories of /fleetsie/custom.
+   - the custom folder is reserved for your customizations.  Three filenames there
+     have special meaning:  'setup', 'overlay.tar.xz' and 'cleanup'.
+     fleetsie_provision ignores all other files and subdirectories in /fleetsie/custom.
 
 EOF
     exit 1
@@ -131,10 +134,7 @@ if [[ "$1" =~ ^[0-9]+$ ]]; then
     NUM=$1
     shift
 fi
-USB_PARTITION=$1
-printf "have NUM=$NUM and USB_PARTITION=$USB_PARTITION\n"
-
-PROVISIONING_DB=/home/fleetsie/fleets/$FLEET_NAME/provisioning.sqlite
+USB_PARTITION="$1"
 
 # run the server-side fleetsie_gen_server script, even if $NUM==0,
 # because it also syncs databases
@@ -142,4 +142,83 @@ printf "Adding $NUM devices to fleet $FLEET_NAME and syncing DBs\n"
 if ! ssh -t fleetsie@$FLEET_HOST ./fleetsie_gen_server $NUM $FLEET_NAME; then
     ssh -t fleetsie@$FLEET_HOST ./fleetsie_gen_server $NUM $FLEET_NAME
 fi
-scp fleetsie@$FLEET_HOST:$PROVISIONING_DB .
+
+if [[ "$USB_PARTITION" != "" ]]; then
+    # determine the target directory for the provisioning files
+    if [[ "${USB_PARTITION:0:1}" == "/" ]]; then
+	PARTITIONISDIR=1
+	if [[ ! -d "$USB_PARTITION" ]]; then
+	    die "error: '$USB_PARTITION' is not a valid directory"
+	else
+	    TARGET="$USB_PARTITION"
+	fi
+    else if ! grep " $USB_PARTITION$" /proc/partitions > /dev/null; then
+	     die "error: '$USB_PARTITION' is not a valid disk partition"
+	 else
+	     usbdev="/dev/$USB_PARTITION"
+	     TARGET=`findmnt -no TARGET "$usbdev"`
+	     if [[ ! "$TARGET" ]]; then
+		 TARGET=`mktemp`
+		 if ! mount $usbdev $TARGET; then
+		     rmdir $TARGET
+		     die "unable to mount partition $usbdev at $TARGET"
+		 fi
+	     fi
+	 fi
+    fi
+    # create fleetsie dir and files
+    PROVDIR="$TARGET/fleetsie"
+    FLEETSUBDIR=/home/fleetsie/fleets/$FLEET_NAME
+    # create both top-level fleetsie directory and the 'custom' subdirectory
+    mkdir -p "$PROVDIR/cusom"
+    # fleet file, with fleet host name and flee name
+    printf "%s\r\n%s\r\n" "$FLEET_HOST" "$FLEET_NAME" > "$PROVDIR/fleet.txt"
+
+    # wifi credentials file, with alternating lines of ESSID, passphrase
+    printf "%s\r\n%s\r\n" "replace_with_wifi_network_name" "replace_with_wifi_password" > "$PROVDIR/wifi.txt"
+
+    # provisioning db
+    PROVISIONING_DB="$FLEETSUBDIR/provisioning.sqlite"
+    scp fleetsie@$FLEET_HOST:$PROVISIONING_DB "$PROVDIR/provisioning.sqlite"
+
+    # fleet credentials, for sending OTP to obtain device credentials
+    FLEET_CREDS="$FLEETSUBDIR/id_ed25519_provision_$FLEET_NAME"
+    scp fleetsie@$FLEET_HOST:$FLEET_CREDS* "$PROVDIR"
+
+    # copy ssh tunnel service and script
+    cp ./ssh-tunnel.service ./ssh_tunnel.sh "$PROVDIR"
+
+    cat <<EOF
+*** Provisioning to $USB_PARTITION is complete. ***
+
+You can further customize the provisioning disk by adding files
+and/or directories to the 'fleetsie/custom' subdirectory:
+
+ - setup script:
+
+     Add a script called 'setup' to the directory.  It will be run as root on
+     the device after it has obtained credentials for the fleet
+     server.  It is run from the `fleetsie/custom` directory on the provisioning disk.
+
+ - overlay archive:
+
+     Add an xz-compressed tar archive called 'overlay.tar.xz' to the directory.
+     It will be extracted at the root directory ("/") of the device after
+     the 'setup' script has run.
+
+ - cleanup script:
+
+     Add a script called 'cleanup' to the directory.  It will be run on
+     the device after any 'setup' script has been run and after any overlay
+     archive has been extracted.
+EOF
+    if [[ ! $PARTITIONISDIR ]]; then
+	cat <<EOF
+Your partition $USB_PARTITION is currently mounted at $TARGET, where the
+fleetsie directory has been created.
+
+Make sure to unmount $USB_PARTITION before removing the drive.
+
+EOF
+    fi
+fi
