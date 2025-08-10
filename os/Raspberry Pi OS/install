@@ -16,11 +16,11 @@ DST=$SYSTEMD/fleetsie-provision.service
 cp ./fleetsie-provision.service $DST
 chown root:root $DST
 chmod oug+x $DST
-ln -s /etc/systemd/system/fleetsie-provision.service $SYSTEMD/multi-user.target.wants
+ln -sf /etc/systemd/system/fleetsie-provision.service $SYSTEMD/multi-user.target.wants
 
 mkdir -p $OPT
 chown root:root $OPT
 DST=$OPT/fleetsie_provision
 cp ./fleetsie_provision $DST
-chmown root:root $DST
-chown oug+x $DST
+chown root:root $DST
+chmod oug+x $DST
