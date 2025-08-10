@@ -69,7 +69,9 @@ fleetsie_gen creates this layout on the USB drive:
 
   /fleetsie/fleet.txt
 
-   - file containing the fleet hostname on line 1, and the fleet name on line 2
+   - line 1: fleet hostname (e.g. whoflewby.org)
+   - line 2: fleet name (e.g. ampi)
+   - line 3: line from ~/.ssh/known_hosts for host in line 1
 
   /fleetsie/fleetsieauth.pub
   /fleetsie/fleetsieauth
@@ -171,8 +173,9 @@ if [[ "$USB_PARTITION" != "" ]]; then
     FLEETSUBDIR=/home/fleetsie/fleets/$FLEET_NAME
     # create both top-level fleetsie directory and the 'custom' subdirectory
     mkdir -p "$PROVDIR/cusom"
-    # fleet file, with fleet host name and flee name
-    printf "%s\r\n%s\r\n" "$FLEET_HOST" "$FLEET_NAME" > "$PROVDIR/fleet.txt"
+    # fleet file, with fleet host, flee name and known_hosts entry for the fleet host
+    KNOWNHOSTS=`ssh-keyscan -t ed25519 -H $FLEET_HOST  2>/dev/null`
+    printf "%s\r\n%s\r\n" "$FLEET_HOST" "$FLEET_NAME" "$KNOWNHOSTS" > "$PROVDIR/fleet.txt"
 
     # wifi credentials file, with alternating lines of ESSID, passphrase
     printf "%s\r\n%s\r\n" "replace_with_wifi_network_name" "replace_with_wifi_password" > "$PROVDIR/wifi.txt"

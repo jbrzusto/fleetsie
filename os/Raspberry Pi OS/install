@@ -15,7 +15,6 @@ OPT=$ROOTFS/opt/fleetsie
 DST=$SYSTEMD/fleetsie-provision.service
 cp ./fleetsie-provision.service $DST
 chown root:root $DST
-chmod oug+x $DST
 ln -sf /etc/systemd/system/fleetsie-provision.service $SYSTEMD/multi-user.target.wants
 
 mkdir -p $OPT

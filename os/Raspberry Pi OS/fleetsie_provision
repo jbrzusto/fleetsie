@@ -7,10 +7,11 @@
 function fatal() {
     if [[ "$LOGFILE" ]]; then
 	echo "$*" >> $LOGFILE
-	echo >> $lOGFILE
+	printf "Provisioning ended at `date`\n\n" >> $LOGFILE
 	sync
     fi
     echo none > /sys/class/leds/ACT/trigger
+    echo none > /sys/class/leds/PWR/trigger
     echo 0 > /sys/class/leds/ACT/brightness
     while true; do
 	echo 1 > /sys/class/leds/PWR/brightness
@@ -24,7 +25,6 @@ function fatal() {
 function warning() {
     if [[ "$LOGFILE" ]]; then
 	echo "warning: $*" >> $LOGFILE
-	echo >> $lOGFILE
 	sync
     fi
 }
@@ -33,8 +33,18 @@ function warning() {
 function info() {
     if [[ "$LOGFILE" ]]; then
 	echo "$*" >> $LOGFILE
-	echo >> $lOGFILE
 	sync
+    fi
+}
+
+# make any line-endings in file $1 just be a single '\n', no '\r'
+# as a side effect, clobbers blank lines, which is fine for our purposes.
+function fix_line_endings () {
+    if [[ -f "$1" ]]; then
+	local tmp="`mktemp`"
+	cat "$1" | tr -s '\r' '\n' > "$tmp"
+	cat "$tmp" > "$1"
+	rm "$tmp"
     fi
 }
 
@@ -74,12 +84,23 @@ function doneprov() {
 # get unique HWID for this device
 HWID=`cat /sys/class/net/eth0/address`
 
+# do some raspi-config stuff
+raspi-config nonint do_ssh 1
+raspi-config nonint do_wifi_country CA
+
+# initial provisioning log is in home folder on sd card, since
+# no USB drive found yet
+LOGFILE="/home/pi/fleetsie_provision.log"
+
+info "waiting for systemctl is-system-running --wait"
+
 # wait for systemctl to have brought up all the usual units
 systemctl is-system-running --wait
 
+info "waiting for a USB drive to be found or plugged in"
 # wait for a USB drive
 while true; do
-      if grep "sda[0-9]?$" /proc/partitions; then
+      if grep -E "sda[0-9]?$" /proc/partitions > /dev/null 2>&1; then
       	  break
       fi
       echo none > /sys/class/leds/ACT/trigger
@@ -91,10 +112,10 @@ while true; do
       sleep 1
 done
 
-mkdir /tmp/usb
+mkdir -p /tmp/usb
 mounted=""
 tmp=`mktemp -d`
-for PART in `grep sda[0-9]$ /proc/partitions | awk '{print $4}'`; do
+for PART in `grep -E "sda[0-9]$" /proc/partitions | awk '{print $4}'`; do
     mp=`findmnt -no TARGET $PART`
     if [[ "$mp" ]]; then
 	 if [[ -d "$mp/fleetsie" ]]; then
@@ -116,15 +137,17 @@ done
 if [[ ! "$mounted" ]]; then
     fatal
 fi
+info "found fleetsie directory on /dev/$PART"
 
 cd $tmp/fleetsie
 LOGFILE="fleetsie_provisioning_log.txt"
-printf "\nprovisioning started on device %s from $PART at %s\n" $HWID `date` >> $LOGFILE
+printf "\nprovisioning started on device %s from $PART at %s\n" $HWID "`date`" >> $LOGFILE
 
 ## try provision wifi
 if [[ ! -f "wifi.txt" ]]; then
     fatal "can't find fleetsie/wifi.txt on USB disk\nfirst line should be the WiFi network name (ESSID), second line should be the WiFi password"
 fi
+fix_line_endings "wifi.txt"
 con=""
 {
     while true; do
@@ -135,6 +158,7 @@ con=""
 	    info "wifi.txt is missing a password line for $ESSID"
 	    break
 	fi
+	info "trying nmcli device wifi con \"$ESSID\" password \"$PASSWD\""
 	CMD="nmcli device wifi con \"$ESSID\" password \"$PASSWD\""
 	read CONRES < <( bash -c "$CMD" 2>&1)
 	if [[ "$CONRES" =~ "successfully activated" ]]; then
@@ -145,7 +169,7 @@ con=""
             info "Could not connect WiFi to $ESSID; error was $CONRES"
 	fi
     done
- } < <( awk '{print $0}' wifi.txt )
+ } < wifi.txt
 
 if [[ $con != 1 ]]; then
     fatal "unable to connect to any WiFi networks given in wifi.txt"
@@ -153,16 +177,17 @@ fi
 
 if ! sqlite3 < /dev/null; then
     info "updating apt and installing sqlite3"
-    if [[ ! apt update && apt install sqlite3 ]]; then
+    if ! apt update || ! apt install sqlite3 ; then
 	fatalf "unable to install sqlite3"
     fi
 fi
 
 ## try get ssh keys for fleet server
-if [[ ! -f fleet.txt ]]; then
+if [[ ! -f "fleet.txt" ]]; then
     fatal "can't find fleetsie/fleet.txt on USB disk\nfirst line should be fleet server hostname; e.g. whoflewby.org\nsecond line should be fleet name; e.g. ampi\n"
 fi
-{ read FLEETHOST && read FLEETNAME && read FLEETKNOWNHOST; } < fleetsie/fleet.txt
+fix_line_endings fleet.txt
+{ read FLEETHOST && read FLEETNAME && read FLEETKNOWNHOST; } < fleet.txt
 if [[ ! $FLEETHOST ]]; then
 	fatal "can't read fleet host name from line 1 of fleetsie/fleet.txt file on USB disk"
 fi
@@ -175,16 +200,19 @@ if [[ ! $FLEETKNOWNHOST ]]; then
 fi
 
 DB=provisioning.sqlite
-if [[ ! -f fleetsieauth.pub || ! -f fleetsieauth || ! -f $DB ]]; then
-    fatal "can't find one or more files needed for connecting to fleet server.\nneed:\nfleetsieauth.pub\nfleetsieauth\nprovisioning.sqlite\n"
+PRIVKEY=id_ed25519_provision_$FLEETNAME
+PUBKEY="$PRIVKEY.pub"
+
+if [[ ! -f $PRIVKEY || ! -f $PUBKEY || ! -f $DB ]]; then
+    fatal "can't find one or more files needed for connecting to fleet server.\nneed:\n$PRIVKEY\n$PUBKEY\nprovisioning.sqlite\n"
 fi
 
 info "appending known_hosts from USB drive to /root/.ssh/known_hosts"
 mkdir -p /root/.ssh
-echo "$FLEETKNOWNHOST" >> /.ssh/known_hosts
-cp  fleetsieauth.pub fleetsieauth /root/.ssh/
-chmod oug+r /root/.ssh/fleetsieauth.pub
-chmod og-rw /root/.ssh/fleetsieauth
+echo "$FLEETKNOWNHOST" >> /root/.ssh/known_hosts
+cp  $PRIVKEY $PUBKEY /root/.ssh/
+chmod u=rw,og=r /root/.ssh/$PUBKEY
+chmod u=rw,og= /root/.ssh/$PRIVKEY
 
 # get name of user with id=1000, typically the first non-privileged user.
 user1000=`id -nu 1000`
@@ -199,9 +227,9 @@ while true; do
 	fatal "no devices left in $DB - contact an administrator for more"
     fi
     if !  printf "%s\n%s\n" "$HWID" "$OTP" | \
-	    ssh -oStrictHostKeyChecking=true -i /root/.ssh/fleetsieauth fleetsie_$FLEETNAME@$FLEETHOST \
+	    ssh -T -oStrictHostKeyChecking=true -i /root/.ssh/$PRIVKEY fleetsie_$FLEETNAME@$FLEETHOST \
 		> $REPLY_FILE 2> $ERROR_FILE; then
-	fatal "error trying to ssh to $FLEETHOST: `cat ERROR_FILE`"
+	fatal "error trying to ssh to $FLEETHOST: `cat $ERROR_FILE`"
     fi
     {
 	read rv
@@ -222,7 +250,7 @@ while true; do
 		fatal "server $FLEETHOST reported this error: $ERRMSG"
 		;;
 	    ok)
-		if ! { read HOSTNAME && read FLEETUSER && read PORT && read SRVPUBKEY && read SRVPRIVKEY && read DEVAUTHKEY } ; then
+		if ! read HOSTNAME || ! read FLEETUSER || ! read PORT || ! read SRVPUBKEY || ! read SRVPRIVKEY || ! read DEVAUTHKEY ; then
 		    fatal "server $FLEETHOST gave bad reply: `cat $REPLY_FILE`"
 		fi
 		info "setting hostname to $HOSTNAME"
