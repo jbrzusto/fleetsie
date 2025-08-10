@@ -303,7 +303,7 @@ It manages three versions of fleet database:
 
 ### **Fleet**
 - contains device records for a single fleet, `FLEET`
-- lives in `/home/fleetsie/fleet_FLEET.sqlite`
+- lives in `/home/fleetsie/fleets/FLEET/fleet.sqlite`
 - owned by user `fleetsie_FLEET`
 - new device records get copied here when generated in **Main**
 - new registrations are copied from here to **Main** whenever
@@ -311,14 +311,14 @@ It manages three versions of fleet database:
 - `fleetsie_auth` uses this database when a new device is provisioning
 
 ### **Provisioning**
-- generated as `/home/fleetsie/provisioning_FLEET.sqlite`
+- generated as `/home/fleetsie/fleets/FLEET/provisioning.sqlite`
 - only contains the `id_in_fleet` and `otp` columns
 - owned by user `fleetsie_FLEET`
 - copied to the USB provisioning disk for a fleet by `fleetsie_gen`
 - only contains records for the unclaimed devices in a fleet
 - each time it is used to provision a device, the corresponding record
   is removed from the DB on the USB disk, and from
-  `/home/fleetsie/provisioning_FLEET.sqlite` on the fleet server
+  `/home/fleetsie/fleets/FLEET/provisioning.sqlite` on the fleet server
 
 whenever `fleetsie_gen_srv` is run for fleet FLEET, it does this:
 - if the One-Fleet database for FLEET exists, any new registrations

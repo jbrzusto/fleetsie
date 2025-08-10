@@ -134,7 +134,7 @@ fi
 USB_PARTITION=$1
 printf "have NUM=$NUM and USB_PARTITION=$USB_PARTITION\n"
 
-PROVISIONING_DB=/home/fleetsie/provisioning_$FLEET_NAME.sqlite
+PROVISIONING_DB=/home/fleetsie/fleets/$FLEET_NAME/provisioning.sqlite
 
 # run the server-side fleetsie_gen_server script, even if $NUM==0,
 # because it also syncs databases

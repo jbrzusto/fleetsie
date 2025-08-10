@@ -20,13 +20,13 @@ Several databases are used:
           allocated here, and eventually, their registration to a
           hardware device is reflected here.
 
-  - Fleet: /home/fleetsie/fleet_FLEETNAME.sqlite - new devices are copied
+  - Fleet: /home/fleetsie/fleets/FLEETNAME/fleet.sqlite - new devices are copied
            here from Main.  This DB is used by fleetsieauth when a device is
  	   being provisioned, and is the first place where the (HWID, device) pairing
  	   is made (i.e. the device is registered).  This DB is owned by user
 	   fleetsie_FLEETNAME
 
-  - Provisioning: /home/fleetsie/provisioning_FLEETNAME.sqlite - a reduced version
+  - Provisioning: /home/fleetsie/fleets/FLEETNAME/provisioning.sqlite - a reduced version
     of the Fleet database, with only the OTP and index_in_fleet columns.  Rows
     represent allocated but unregistered devices for this fleet.  This is
     updated whenever new devices are allocated to the fleet, or when devices are
@@ -90,6 +90,7 @@ fi
 
 FLEETUSER="fleetsie_$FLEETNAME"
 FLEETDIR=/home/$FLEETUSER
+FLEETSUBDIR=/home/fleetsie/fleets/$FLEETNAME
 if ! id -u $FLEETUSER 2> /dev/null ; then
     printf "Creating user $FLEETUSER...\n"
     sudo adduser --disabled-password --gecos '""' $FLEETUSER
@@ -97,6 +98,10 @@ if ! id -u $FLEETUSER 2> /dev/null ; then
     sudo usermod -a -G $FLEETUSER fleetsie
     sudo mkdir $FLEETDIR/.ssh
     sudo touch $FLEETDIR/.ssh/authorized_keys
+    sudo mkdir -p $FLEETSUBDIR
+    sudo chmod g+w $FLEETSUBDIR
+    sudo chown fleetsie:fleetsie /home/fleetsie/fleets
+    sudo chown $FLEETUSER:$FLEETUSER $FLEETSUBDIR
     # generate fleet keys used by devices when first connecting to the server.  These keys are provided on the USB
     # provisioning disk, and can only be used to run fleetsie_auth, which provides device credentials upon
     # receipt of a valid, unused one-time password.
@@ -115,8 +120,8 @@ fi
 FLEETDIR=/home/$FLEETUSER
 
 MAINDB="/home/fleetsie/fleets.sqlite"
-FLEETDB="/home/fleetsie/fleet_$FLEETNAME.sqlite"
-PROVISIONINGDB="/home/fleetsie/provisioning_$FLEETNAME.sqlite"
+FLEETDB="$FLEETSUBDIR/fleet.sqlite"
+PROVISIONINGDB="$FLEETSUBDIR/provisioning.sqlite"
 
 # create MAIN and FLEET DBs if they don't exist
 for DB in "$MAINDB" "$FLEETDB"; do

@@ -54,11 +54,11 @@ function sanitize_key() {
 # The fleet name is provided in  environment variable FLEET by the ssh key in /home/fleetsie_fleet/.ssh/authorized_keys
 
 # location of fleet DB; this is generated in advance by fleetsie_gen_srv
-DB=~fleetsie/fleet_${FLEET}.sqlite
+DB=~fleetsie/fleets/${FLEET}/fleet.sqlite
 
 # location of provisioning DB; this keeps the reduced version of the DB
 # with records of unregistered devices, and with only the id_in_fleet and otp columns
-PDB=~fleetsie/provisioning_${FLEET}.sqlite
+PDB=~fleetsie/fleets/${FLEET}/provisioning.sqlite
 
 # sqlite runs a set of queries through the devices sqlite database.
 # The first line output is saved in the variable whose name
