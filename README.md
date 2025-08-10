@@ -189,10 +189,10 @@ fleetsie_gen creates this layout on the USB drive:
 - file containing the fleet hostname on line 1, and the fleet name on line 2
 
 ```
-/fleetsie/devices.sqlite
+/fleetsie/provisioning.sqlite
 ```
 
-- database containing allocated but unclaimed devices for this fleet.
+- database containing unused fleet device IDs and one-time passwords for claiming them
 
 ```
 /fleetsie/fleetsieauth.pub
