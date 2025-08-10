@@ -51,12 +51,14 @@ function sanitize_key() {
     v=${v//[^-@_=:+\/[:space:][:alnum:]]/}
 }
 
+# The fleet name is provided in  environment variable FLEET by the ssh key in /home/fleetsie_fleet/.ssh/authorized_keys
+
 # location of fleet DB; this is generated in advance by fleetsie_gen_srv
-DB=~/fleet.sqlite
+DB=~fleetsie/fleet_${FLEET}.sqlite
 
 # location of provisioning DB; this keeps the reduced version of the DB
 # with records of unregistered devices, and with only the id_in_fleet and otp columns
-PDB=~/provisioning.sqlite
+PDB=~fleetsie/provisioning_${FLEET}.sqlite
 
 # sqlite runs a set of queries through the devices sqlite database.
 # The first line output is saved in the variable whose name
@@ -77,19 +79,8 @@ if [[ ! $HWID =~ ^([[:xdigit:]]{2}:){5}[[:xdigit:]]{2}$ ]]; then
     die "invalid hardware ID"
 fi
 
-# FLEETNAME is provided as an environment variable by the ssh key in /home/fleetsie_fleet/.ssh/authorized_keys
 read OTP
 sanitize OTP
-
-read PUBKEY
-sanitize_key PUBKEY
-
-PRIVKEY=""
-# read remaining lines as private key file lines
-while read PRIVKEYLINE; do
-    printf -v PRIVKEY "%s%s\n" "$PRIVKEY" "$PRIVKEYLINE"
-done
-sanitize_key PRIVKEY
 
 # check whether this is a valid OTP; early, so that we don't
 # leak information to a totally unauthorized user.
@@ -109,13 +100,13 @@ fi
 # so this is atomic and at most one process can succeed in claiming the
 # device record with the matching OTP.
 CLIENT_IP=${SSH_CLIENT/ */}
-sqlite resp "update devices set hwid='$HWID', ts_provisioned=unixepoch('subsec'), ip_provisioned_from='$CLIENT_IP' where otp='$OTP' and hwid=''"
+sqlite resp "update devices set hwid='$HWID', ts_registered=strftime('%s',datetime()), ip_provisioned_from='$CLIENT_IP' where otp='$OTP' and hwid is null"
 
 # did we succeed in registering the device with this OTP?
 sqlite resp "select hwid from devices where otp='$OTP'"
 if [[ "$resp" != "$HWID" ]]; then
     # someone else got to the device first, do a query to suggest the index of the OTP to try next
-    sqlite resp "select min(id_in_fleet) from devices where hwid=''"
+    sqlite resp "select min(id_in_fleet) from devices where hwid is null"
     if [[ "$resp" != "" ]]; then
 	suggest_trying $resp
     else
