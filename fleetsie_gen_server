@@ -102,17 +102,27 @@ if ! id -u $FLEETUSER 2> /dev/null ; then
     sudo chmod g+w $FLEETSUBDIR
     sudo chown fleetsie:fleetsie /home/fleetsie/fleets
     sudo chown $FLEETUSER:$FLEETUSER $FLEETSUBDIR
-    # generate fleet keys used by devices when first connecting to the server.  These keys are provided on the USB
-    # provisioning disk, and can only be used to run fleetsie_auth, which provides device credentials upon
-    # receipt of a valid, unused one-time password.
+    # generate fleet credentials used by devices when first connecting
+    # to the server.  These keys are provided on the USB provisioning
+    # disk, and can only be used to run fleetsie_auth, which provides
+    # device credentials upon receipt of a valid, unused one-time
+    # password.
     PROV_KEY_FILE=$FLEETDIR/.ssh/id_ed25519_provision_$FLEETNAME
     sudo ssh-keygen -P "" -t ed25519 -C "fleetsie_$FLEETNAME@`hostname`" -f $PROV_KEY_FILE > /dev/null
     sudo chown $FLEETUSER:$FLEETUSER $PROV_KEY_FILE ${PROV_KEY_FILE}.pub
+    # place copies in ~/fleetsie/.ssh/ for convenience
+    sudo cp $PROV_KEY_FILE ${PROV_KEY_FILE}.pub $FLEETSUBDIR
+    sudo chown fleetsie:fleetsie_$FLEETNAME $FLEETSUBDIR/`basename $PROV_KEY_FILE`*
+    # build the authorized_keys entry for the fleet credentials
     FLEETPUBKEY=`sudo cat ${PROV_KEY_FILE}.pub`
     AUTHKEYPREFIX="command=\"/home/fleetsie/fleetsie_auth\",restrict,pty,environment=\"FLEET=$FLEETNAME\""
     printf "%s %s\n" "$AUTHKEYPREFIX" "$FLEETPUBKEY" | sudo tee -a $FLEETDIR/.ssh/authorized_keys > /dev/null
     sudo chown -R $FLEETUSER:$FLEETUSER $FLEETDIR/.ssh
+    # create a boot-time cron job to build the skeleton directories for the fleet in /run/fleetsie
     printf "@reboot root /bin/bash -c 'mkdir -p /run/fleetsie/dev/$FLEETNAME && chown $FLEETUSER:$FLEETUSER /run/fleetsie/dev/$FLEETNAME'\n" | sudo tee /etc/cron.d/${FLEETUSER}_boot > /dev/null
+    # the rest of the code requires that the fleetsie user belong to group fleetsie_FLEETNAME.
+    # It has been added, but this doesn't take effect until a new login, so return an error,
+    # which will cause the client-side to re-login and re-run this script.
     printf "New user $FLEETUSER created; fleetsie_gen_server being re-run.\n"
     exit 1
 fi
