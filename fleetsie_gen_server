@@ -120,9 +120,10 @@ if ! id -u $FLEETUSER 2> /dev/null ; then
     sudo chown -R $FLEETUSER:$FLEETUSER $FLEETDIR/.ssh
     # create a boot-time cron job to build the skeleton directories for the fleet in /run/fleetsie
     printf "@reboot root /bin/bash -c 'mkdir -p /run/fleetsie/dev/$FLEETNAME && chown $FLEETUSER:$FLEETUSER /run/fleetsie/dev/$FLEETNAME'\n" | sudo tee /etc/cron.d/${FLEETUSER}_boot > /dev/null
-    # the rest of the code requires that the fleetsie user belong to group fleetsie_FLEETNAME.
-    # It has been added, but this doesn't take effect until a new login, so return an error,
+    # The rest of the code in this file assumes that the fleetsie user belongs to group fleetsie_FLEETNAME.
+    # It has been added above, but this doesn't take effect until a new login, so return an error,
     # which will cause the client-side to re-login and re-run this script.
+    # (sure, we could instead use sudo all over the place below, but this seems cleaner)
     printf "New user $FLEETUSER created; fleetsie_gen_server being re-run.\n"
     exit 1
 fi
