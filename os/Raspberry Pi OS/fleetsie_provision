@@ -2,22 +2,25 @@
 
 # fleetsie_provision: provision this device using files on an attached USB drive
 
-# on a fatal error, write any supplied arguments to $LOGFILE if defined,
-# and then just flash the red LED
+# This script is run from a fleetsie-modified OS image on the Pi during
+# the second boot session (i.e. after the first session, which resizes the
+# partition etc.)
+
+# Progress is logged:
+# - initially, to /home/pi/fleetsie_provision.log
+# - once the provisioning USB disk is detected, to USB:/fleetsie/fleetsie_provision.log
+
+# fatal is called for a fatal error.  It writes any supplied arguments
+# to $LOGFILE if defined, and then just slowly flash the red LED
 function fatal() {
     if [[ "$LOGFILE" ]]; then
 	echo "$*" >> $LOGFILE
 	printf "Provisioning ended at `date`\n\n" >> $LOGFILE
 	sync
     fi
-    echo none > /sys/class/leds/ACT/trigger
-    echo none > /sys/class/leds/PWR/trigger
-    echo 0 > /sys/class/leds/ACT/brightness
     while true; do
-	echo 1 > /sys/class/leds/PWR/brightness
-	sleep .2
-	echo 0 > /sys/class/leds/PWR/brightness
-	sleep .2
+	set_leds_for 1 0 1
+	set_leds_for 0 0 1
     done
 }
 
@@ -48,49 +51,61 @@ function fix_line_endings () {
     fi
 }
 
+# use the RPi LEDS (red, green)
 RED_LED=/sys/class/leds/PWR/brightness
 RED_CTRL=/sys/class/leds/PWR/trigger
 GRN_LED=/sys/class/leds/ACT/brightness
 GRN_CTRL=/sys/class/leds/ACT/trigger
 
-function grnctrl() {
-    printf "$1\n" > $GRN_CTRL
+# init_leds should be called once before calling set_leds_forfor
+# It tries to disable other LED uses, and sets up FDs
+# for control registers and brightness.
+function init_leds() {
+    exec {RED_LED_FD}>$RED_LED
+    exec {GRN_LED_FD}>$GRN_LED
+    exec {RED_LED_CTRL_FD}>$RED_CTRL
+    exec {GRN_LED_CTRL_FD}>$GRN_CTRL
+    printf "none\n" >&$GRN_LED_CTRL_FD
+    printf "none\n" >&$RED_LED_CTRL_FD
 }
 
-function grnled() {
-    printf "$1\n" > $GRN_LED
+# set_leds_for R G TIME sets red LED to R (0 or 1),
+# green LED to G (0 or 1) and sleeps for TIME
+function set_leds_for() {
+    printf "$1\n" >&$RED_LED_FD
+    printf "$2\n" >&$GRN_LED_FD
+    sleep $3
 }
 
-function redled() {
-    printf "$1\n" > $RED_LED
-}
-
-function redctrl() {
-    printf "$1\n" > $RED_CTRL
-}
-
-function doneprov() {
-    grnctrl none; redctrl none
+# when finished provisioning, blink R+G leds
+# in tandem
+function done_prov() {
     while true; do
-	redled 1; grnled 1; sleep .2
-	redled 0; grnled 0; sleep .2
-	redled 1;           sleep .2
-	redled 0;           sleep .2
-	redled 1;           sleep .2
-	redled 0;           sleep .2
+	set_leds_for 1 1 .3
+	set_leds_for 0 0 .3
+	sleep 1
     done
 }
+
+init_leds()
 
 # get unique HWID for this device
 HWID=`cat /sys/class/net/eth0/address`
 
-# do some raspi-config stuff
+# do some raspi-config stuff to avoid needing the user to do it
+# in rpi-imager
+
+# enable ssh
 raspi-config nonint do_ssh 1
+# set the wifi country (without this, rfkill blocks use of wifi)
 raspi-config nonint do_wifi_country CA
+
+# get name of user with id=1000, typically the first non-privileged user.
+USER1000=`id -nu 1000`
 
 # initial provisioning log is in home folder on sd card, since
 # no USB drive found yet
-LOGFILE="/home/pi/fleetsie_provision.log"
+LOGFILE="/home/$USER1000/fleetsie_provisioning_log.txt"
 
 info "waiting for systemctl is-system-running --wait"
 
@@ -103,13 +118,8 @@ while true; do
       if grep -E "sda[0-9]?$" /proc/partitions > /dev/null 2>&1; then
       	  break
       fi
-      echo none > /sys/class/leds/ACT/trigger
-      echo 1 > /sys/class/leds/ACT/brightness
-      echo 1 > /sys/class/leds/PWR/brightness
-      sleep 1
-      echo 0 > /sys/class/leds/ACT/brightness
-      echo 0 > /sys/class/leds/PWR/brightness
-      sleep 1
+      set_leds_for 1 1 0.5
+      set_leds_for 0 0 0.5
 done
 
 mkdir -p /tmp/usb
@@ -138,10 +148,12 @@ if [[ ! "$mounted" ]]; then
     fatal
 fi
 info "found fleetsie directory on /dev/$PART"
-
 cd $tmp/fleetsie
-LOGFILE="fleetsie_provisioning_log.txt"
-printf "\nprovisioning started on device %s from $PART at %s\n" $HWID "`date`" >> $LOGFILE
+
+# switch logging target; this makes it easier to check
+# the log, since it's on the USB drive
+LOGFILE="$PWD/fleetsie_provisioning_log.txt"
+printf "\nProvisioning started on device %s from $PART at %s\n" $HWID "`date`" >> $LOGFILE
 
 ## try provision wifi
 if [[ ! -f "wifi.txt" ]]; then
@@ -207,25 +219,25 @@ if [[ ! -f $PRIVKEY || ! -f $PUBKEY || ! -f $DB ]]; then
     fatal "can't find one or more files needed for connecting to fleet server.\nneed:\n$PRIVKEY\n$PUBKEY\nprovisioning.sqlite\n"
 fi
 
-info "appending known_hosts from USB drive to /root/.ssh/known_hosts"
+info "Appending known_hosts from USB drive to /root/.ssh/known_hosts"
 mkdir -p /root/.ssh
 echo "$FLEETKNOWNHOST" >> /root/.ssh/known_hosts
 cp  $PRIVKEY $PUBKEY /root/.ssh/
 chmod u=rw,og=r /root/.ssh/$PUBKEY
 chmod u=rw,og= /root/.ssh/$PRIVKEY
 
-# get name of user with id=1000, typically the first non-privileged user.
-user1000=`id -nu 1000`
-
 info "sshing to fleet server $FLEETHOST"
 
 REPLY_FILE=/tmp/fleetsieauth.txt
 ERROR_FILE=/tmp/fleetsieauth.err
+
+info "Trying to claim an unregistered device:"
 while true; do
     OTP=`sqlite3 $DB "select otp from devices order by id_in_fleet limit 1"`
     if [[ "$OTP" == "" ]]; then
 	fatal "no devices left in $DB - contact an administrator for more"
     fi
+    info " - trying otp=${OTP:0:16}..."
     if !  printf "%s\n%s\n" "$HWID" "$OTP" | \
 	    ssh -T -oStrictHostKeyChecking=true -i /root/.ssh/$PRIVKEY fleetsie_$FLEETNAME@$FLEETHOST \
 		> $REPLY_FILE 2> $ERROR_FILE; then
@@ -243,7 +255,7 @@ while true; do
 		# server suggests trying device with id_in_fleet = DEVNUM; delete devices with smaller id_in_fleet
 		# because the server is effectively telling us they have been claimed.
 		sqlite3 $DB "delete from devices where id_in_fleet < $DEVNUM;"
-		info "server $FLEETHOST suggests trying device # $DEVNUM"
+		info "server $FLEETHOST suggests trying device with id_in_fleet=$DEVNUM"
 		;;
 	    error)
 		read ERRMSG
@@ -253,15 +265,17 @@ while true; do
 		if ! read HOSTNAME || ! read FLEETUSER || ! read PORT || ! read SRVPUBKEY || ! read SRVPRIVKEY || ! read DEVAUTHKEY ; then
 		    fatal "server $FLEETHOST gave bad reply: `cat $REPLY_FILE`"
 		fi
-		info "setting hostname to $HOSTNAME"
+		info "Successfully claimed!"
+		info "Setting hostname to $HOSTNAME"
 		echo "$HOSTNAME" /etc/hostname
-		info "saving ssh keys for access to $HOSTNAME"
+		info "Saving ssh keys for access to $HOSTNAME and $FLEETHOST"
 		mkdir -p /home/${USER1000}/.ssh
 		ln -s "$PORT" /home/${USER1000}/.ssh/fleetsie_tunnel_port
 		echo "$SRVPUBKEY" > /home/${USER1000}/.ssh/fleetsie.pub
 		echo "$SRVPRIVKEY" > /home/${USER1000}/.ssh/fleetsie
 		echo "$FLEETKNOWNHOST" >> /home/${USER1000}/.known_hosts
-		echo "$DEVAUTHKEY" >> /home/pi/.ssh/authorized_keys
+		echo "$DEVAUTHKEY" >> /home/{$USER1000}/.ssh/authorized_keys
+		info "Configuring ssh for logging into fleetsie = $FLEETUSER@$FLEETHOST"
 		cat >> /home/${USER1000}/.ssh/config <<EOF
 Host fleetsie
    Hostname $FLEETHOST
@@ -273,10 +287,10 @@ EOF
 		chown -R ${USER1000}:${USER1000} /home/${USER1000}/.ssh
 		chmod oug-r /home/${USER1000}/fleetsie
 		chmod og-w -R /home/${USER1000}/.ssh
-		if ! ssh -i /home/pi/.ssh/fleetsie fleetsie date > /dev/null 2>/tmp/ssherror.txt; then
+		if ! ssh -i /home/${USER1000}/.ssh/fleetsie fleetsie date > /dev/null 2>/tmp/ssherror.txt; then
 		    fatal "could not login to $FLEETHOST with new credentials: `cat /tmp/ssherror.txt`"
 		fi
-		info "removing entry with this OTP from devices table"
+		info "Removing entry with this OTP from devices table"
 		sqlite3 $DB "delete from devices where otp='$OTP'"
 		break
 	esac
@@ -284,41 +298,41 @@ EOF
 done
 
 if [[ -d custom ]]; then
-    info "entering customization directory"
+    info "Starting custom provisioning; any subsequent errors are likely in custom code, and not in fleetsie."
     if [[ -f setup ]]; then
-	info "running customize/setup"
+	info "Running customize/setup..."
 	if . ./setup 2>/tmp/setuplog.txt; then
-	    info "setup completed successfully."
+	    info "Setup completed successfully."
 	else
 	    info "error while running setup: `cat /tmp/setuplog.txt`"
 	fi
     else
-	info "no setup script found."
+	info "No custom setup script found."
     fi
     if [[ -f overlay.tar.xz ]]; then
-	info "extracting overlay.tar.xz to /"
+	info "Extracting overlay.tar.xz to /..."
 	if tar -C / -xJvf overlay.tar.xz 2>/tmp/overlaylog.txt; then
-	    info "overlay extraction completed successfully."
+	    info "Overlay extraction completed successfully."
 	else
 	    info "error while extracting overlay: `cat /tmp/overlaylog.txt`"
 	fi
     else
-	info "no overlay.tar.xz archive found"
+	info "No custom overlay.tar.xz archive found."
     fi
     if [[ -f cleanup ]]; then
-	info "running customize/cleanup"
+	info "Running customize/cleanup..."
 	if . ./setup 2>/tmp/cleanuplog.txt; then
-	    info "cleanup completed successfully."
+	    info "Cleanup completed successfully."
 	else
 	    info "error while running cleanup: `cat /tmp/cleanuplog.txt`"
 	fi
     else
-	info "no cleanup script found."
+	info "No custom cleanup script found."
     fi
 
 else
-    info "no customize directory on USB disk; provisioning done."
+    info "No custom directory on USB disk."
 fi
-info "provisioning ended at `date`"
+info "Provisioning ended at `date`."
 umount $tmp
-doneprov
+done_prov
