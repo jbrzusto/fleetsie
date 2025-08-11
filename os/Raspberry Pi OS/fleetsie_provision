@@ -16,6 +16,7 @@ function fatal() {
     if [[ "$LOGFILE" ]]; then
 	echo "$*" >> $LOGFILE
 	printf "Provisioning ended at `date`\n\n" >> $LOGFILE
+	say "$* . Provisioning ended at `date`"
 	sync
     fi
     while true; do
@@ -28,6 +29,7 @@ function fatal() {
 function warning() {
     if [[ "$LOGFILE" ]]; then
 	echo "warning: $*" >> $LOGFILE
+	say "warning. $*"
 	sync
     fi
 }
@@ -37,6 +39,7 @@ function info() {
     if [[ "$LOGFILE" ]]; then
 	echo "`date`: $*" >> $LOGFILE
 	sync
+	say "$*"
     fi
 }
 
@@ -87,7 +90,39 @@ function done_prov() {
     done
 }
 
+SPOKEN_MESSAGE_FILE=/tmp/spoken_message.wav
+SPOKEN_MESSAGE_FILE_TEMP=/tmp/spoken_message_tmp.wav
+
+# init_speech looks for a text-to-speech program,
+# and if one exists, start a task that repeatedly plays
+# /tmp/spoken_message.wav, sleeping 1 s in between.
+# it also sets the SPEECH_COMMAND variable used by say().
+function init_speech() {
+    # currently, this only support pico2wave from ttspico-utils
+    # hopefully this was installed in the custom_pre stage of provisioning,
+    # or was already in the OS image.
+    if which pico2wave > /dev/null; then
+	SPEECH_COMMAND="pico2wave -l en-GB -w /tmp/$SPOKEN_MESSAGE_FILE_TEMP"
+	nohup "bash -c 'while true; do if [[ -f $SPOKEN_MESSAGE_FILE ]]; then aplay $SPOKEN_MESSAGE_FILE; fi; sleep 1; done'" &
+	disown %1
+    fi
+}
+
+# say a phrase through the audio jack, if possible
+# if SPEECH_COMMAND is set, that program is used to generate
+# SPOKEN_MESSAGE_FILE, which will be spoken through the audio
+# jack by the background task launched in init_speech()
+function say() {
+    if [[ ! "$SPEECH_COMMAND" ]]; then
+	return
+    fi
+    $SPEECH_COMMAND "$*"
+    # atomically move the synthesized audio file to its destination
+    mv -f $SPOKEN_MESSAGE_FILE_TEMP $SPOKEN_MESSAGE_FILE
+}
+
 init_leds()
+init_speech()
 
 # get unique HWID for this device
 HWID=`cat /sys/class/net/eth0/address`
@@ -401,5 +436,6 @@ else
     info "No custom_post directory on USB disk."
 fi
 info "Provisioning ended at `date`."
+say "The rasp-berry pi is now ready to deploy as part of the $FLEET_NAME fleet.  Please label it with this 6 character ID. $HWID{9:1}, $HWID{10:1}, $HWID{12:1}; $HWID{13:1}, $HWID{15:1}, $HWID{16:1}"
 umount $tmp
 done_prov
