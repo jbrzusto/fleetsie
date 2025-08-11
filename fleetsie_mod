@@ -33,10 +33,26 @@ automatically restored the next time 'fleetsie mount OSNAME.img' is run
 
   fleetsiemod install [OSTYPE]
 
-- uses instructions customized for 'OSTYPE' to install 'fleetsie' in the overlain OS image.
+- uses instructions customized for 'OSTYPE' to install 'fleetsie' in the overlain OS image.\
 - 'OSTYPE' defaults to 'Raspberry Pi OS'; do 'fleetsiemod install --help' to list others.
 - after this command, you can make any further customizations to the image by manipulating files
-in the 'part_N' directories
+in the 'my_work/part_N' directories
+- in particular, these files are treated specially:
+  - my_work/part_2/opt/fleetsie/custom_pre is a folder which gets copied onto the SD card
+    so that the running system will see it in '/opt/fleetsie/custom_pre'
+    The fleetsie_provision script uses it early in the provisioning process, before
+    even trying to find the USB provisioning disk.
+  - my_work/part_2/opt/fleetsie/custom_pre/setup - if this exists, it is a script which will be run
+    early by the fleetsie_provision script
+  - my_work/part_2/opt/fleetsie/custom_pre/packages - if this folder exists, any .deb packages it holds
+    will be installed early by the fleetsie_provision script (after 'setup' is run, but before 'overlay'
+    is extracted)
+  - my_work/part_2/opt/fleetsie/custom_pre/overlay.tar.xz - if this exists, it is an archive which will
+    be extracted to "/" as user root early by the fleetsie_provision script, right after running the
+    setup script mentioned previously
+  - my_work/part_2/opt/fleetsie/custom_pre/cleanup - if this exists, it is a script which will be run
+    early by the fleetsie_provision script, right after extracting the overlay image just mentioned
+
 - do 'fleetsiemod save' to create a new installable image that includes 'fleetsie' and your changes
 
   fleetsiemod save [NEW_IMAGE_NAME]
