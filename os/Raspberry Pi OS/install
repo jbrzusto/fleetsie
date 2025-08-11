@@ -12,6 +12,22 @@ ROOTFS=$TARGET_ROOT/rootfs
 SYSTEMD=$ROOTFS/etc/systemd/system
 OPT=$ROOTFS/opt/fleetsie
 
+FIRMWARE_ARCH=$TARGET_ROOT/firmware-stable.zip
+FIRMWARE_URL=https://github.com/raspberrypi/firmware/archive/refs/heads/stable.zip
+
+# update firmware, possibly fetching the archive first.
+if [[ ! -f $FIRMWARE_ARCH ]]; then
+    cat <<EOF
+The file $FIRMWARE_ARCH does not exist in folder $PWD.
+If you want me to download it, hit Enter.  Otherwise, hit Ctrl-C
+to abort installation.
+EOF
+    read ignore
+    curl -o $FIRMWARE_ARCH $FIRMWARE_URL
+fi
+
+unzip -j -o -d $BOOTFS $FIRMWARE_ARCH **/start*.elf **/fixup*.dat
+
 DST=$SYSTEMD/fleetsie-provision.service
 cp ./fleetsie-provision.service $DST
 chown root:root $DST
