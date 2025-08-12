@@ -123,10 +123,11 @@ function done_prov() {
 SPOKEN_MESSAGE_FILE=/tmp/spoken_message.wav
 SPOKEN_MESSAGE_FILE_TEMP=/tmp/spoken_message_tmp.wav
 
-# init_speech looks for a text-to-speech program,
+# init_speech looks for a text-to-speech (tts) program,
 # and if one exists, start a task that repeatedly plays
-# /tmp/spoken_message.wav, sleeping 1 s in between.
-# it also sets the SPEECH_COMMAND variable used by say().
+# SPOKEN_MESSAGE_FILE, sleeping 1 s in between.
+# It also sets the SPEECH_COMMAND variable used by say(),
+# and this serves to flag availability of tts.
 function init_speech() {
     # Currently, this only supports pico2wave from package ttspico-utils
     # Hopefully this was installed in the custom_pre stage of provisioning,
@@ -134,42 +135,65 @@ function init_speech() {
     # I find the en-GB voice more clear than the en-US voice.
     if which pico2wave > /dev/null; then
 	SPEECH_COMMAND="pico2wave -l en-GB -w $SPOKEN_MESSAGE_FILE_TEMP"
+	# run a simple repeating player in the background.  It ends when fleetsie-provision.service stops.
+	# No attempt is made to queue multiple speech requests; whenever aplay runs, it plays the latest
+	# request to have created SPOKEN_MESSAGE_FILE since last time aplay ran.
 	nohup bash -c "while true; do if [[ -f $SPOKEN_MESSAGE_FILE ]]; then aplay $SPOKEN_MESSAGE_FILE; fi; sleep 1; done" &
     fi
 }
 
-# say a phrase through the audio jack, if possible
-# if SPEECH_COMMAND is set, that program is used to generate
+# say speaks a phrase through the Pi audio jack, if a tts
+# service is available.
+# If SPEECH_COMMAND is set, that program is used to generate
 # SPOKEN_MESSAGE_FILE, which will be spoken through the audio
 # jack by the background task launched in init_speech()
 function say() {
     if [[ ! "$SPEECH_COMMAND" ]]; then
 	return
     fi
-    $SPEECH_COMMAND "$*"
+    help_pronounce new "$*"
+    $SPEECH_COMMAND "$new"
     # (atomically) move the synthesized audio file to its destination
     mv -f $SPOKEN_MESSAGE_FILE_TEMP $SPOKEN_MESSAGE_FILE
+}
+
+# get_extra_pronunciations reads the file named in $1
+# and uses it to build an associative array called 'pronounciations'.
+# Pairs of lines in $1 represent "from" and "to" expressions.
+function get_extra_pronunciations () {
+    declare -Ag pronunciations
+    {
+	while true; do
+	    if ! read from || ! read to; then
+		break
+	    fi
+	    pronunciations["$from"]="$to"
+	done
+    } < $1
+}
+
+# help_pronounce changes some words to make them easier to pronounce
+# clearly for picotts.  It returns the modified words in the variable
+# named by $1
+function help_pronounce() {
+    declare -n v=$1
+    shift
+    w="$*"
+    if [[ "${#pronunciations[@]}" -gt 0 ]]; then
+	for from in "${!pronunciations[@]}"; do
+	    to="${pronunciations[$from]}"
+	    w="${w//$from/$to}"
+	done
+    fi
+    # copy to destination variable
+    v="$w"
 }
 
 init_leds
 init_speech
 
-# get unique HWID for this device
+# get unique HWID for this device; it is the ethernet adapter MAC address
 HWID=`cat /sys/class/net/eth0/address`
-
-# do some raspi-config stuff to avoid needing the user to do it
-# in rpi-imager
-
-info "enabling ssh service"
-
-# enable ssh - doing this with "raspi-config nonint do_ssh 1" did not work
-touch /boot/firmware/ssh
-systemctl start sshswitch.service
-
-info "using raspi-config to set the wifi country code to Canada"
-
-# set the wifi country (without this, rfkill blocks use of wifi)
-raspi-config nonint do_wifi_country CA
 
 # get name of user with id=1000, typically the first non-privileged user.
 USER1000=`id -nu 1000`
@@ -178,6 +202,12 @@ USER1000=`id -nu 1000`
 PRE_CUSTOM_DIR=/opt/fleetsie/custom_pre
 if [[ -d $PRE_CUSTOM_DIR ]]; then
     pushd $PRE_CUSTOM_DIR
+    PRFILE=pronunciations.txt
+    if [[ -f $PRFILE ]]; then
+	info "Reading extra pronunciations from custom_pre/$PRFILE"
+	fix_line_endings $PRFILE
+	get_extra_pronunciations $PRFILE
+    fi
     info "Starting custom pre-provisioning; any subsequent errors are likely in custom code, and not in fleetsie."
     if [[ -f setup ]]; then
 	info "Running customize/setup..."
@@ -226,6 +256,20 @@ if [[ -d $PRE_CUSTOM_DIR ]]; then
 else
     info "No $PRE_CUSTOM_DIR found - skipping custom pre-provisioning."
 fi
+
+# do some raspi-config stuff to avoid requiring the user to do it
+# in rpi-imager
+
+info "enabling ssh service"
+
+# enable ssh - doing this with "raspi-config nonint do_ssh 1" did not work
+touch /boot/firmware/ssh
+systemctl start sshswitch.service
+
+info "using raspi-config to set the wifi country code to Canada"
+
+# set the wifi country (without this, rfkill blocks use of wifi)
+raspi-config nonint do_wifi_country CA
 
 info "waiting for a USB drive to be found or plugged in"
 # wait for a USB drive

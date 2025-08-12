@@ -52,6 +52,11 @@ in the 'my_work/part_N' directories
     setup script mentioned previously
   - my_work/part_2/opt/fleetsie/custom_pre/cleanup - if this exists, it is a script which will be run
     early by the fleetsie_provision script, right after extracting the overlay image just mentioned
+  - my_work/part_2/opt/fleetsie/custom_pre/pronunciation.txt - if this exists, it is used to help
+    the text-to-speech system pronounce words or phrases associated with your project.  Each pair
+    of lines in the file gives a 'from' and a 'to' expression, respectively. These pairs will be
+    applied by bash in order when modifying a string 's' before speaking it.  Specifically,
+    each pair causes bash to do 's="${s//$from/$to}"'
 
 - do 'fleetsiemod save' to create a new installable image that includes 'fleetsie' and your changes
 
