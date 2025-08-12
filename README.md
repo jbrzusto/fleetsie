@@ -2,20 +2,32 @@
 
 Simple tool to provision and manage a fleet of linux-based iot devices.
 
+![alt text](http://github.com/jbrzusto/fleetsie/fleetsie_in_a_picture.jpg)
+
 ## Parts
 
 **`fleetsie_mod`**: modifies a stock OS image for use with `fleetsie`
 
-**`fleetsie_provision`**: script which provisions the system by using the code, configuration and credentials
-supplied on an attached USB disk.  The script is intended to be run once, at provisioning time.
+**`fleetsie_provision`**: script which provisions the system by using
+the code, configuration and credentials supplied on an attached USB
+disk.  The script is intended to be run once, at provisioning time.
 
-**`fleetsie-provision.service`**: systemd service that runs `fleetsie_provision` when the system is **stable**.
-The meaning of **stable** might depend on the OS.  Disables itself after a successful run of
-`fleetsie_provision`.
+**`fleetsie-provision.service`**: systemd service that runs
+`fleetsie_provision` when the system is **stable**.  The meaning of
+**stable** might depend on the OS.  Disables itself after a successful
+run of `fleetsie_provision`.
 
-**`fleetsie_gen`**: generate a USB provisioning disk and the server-side inventory for a fleet
+**`fleetsie_auth`**: server-side script that provides credentials to a
+device that logs in with a one-time password during provisioning
 
-**`fleetsie_srv`**: set up a server for use with `fleetsie_gen`
+**`fleetsie_srv`**: set up a server for use with `fleetsie`
+
+**`fleetsie_gen`**: generate a USB provisioning disk and the
+server-side inventory for a fleet
+
+**`fleetsie_gen_server`**: script run on the fleet server by
+`fleetsie_gen`
+
 
 ## `fleetsie_mod` - Manage Creation of a Modified OS Image
 
