@@ -1,5 +1,6 @@
 [Unit]
 Description=fleetsie system provisioner
+After=local-fs.target
 
 [Service]
 Type=oneshot
