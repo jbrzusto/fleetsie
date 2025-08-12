@@ -268,7 +268,7 @@ cd $tmp/fleetsie
 # switch logging target; this makes it easier to check
 # the log, since it's on the USB drive
 LOGFILE="$PWD/fleetsie_provisioning_log.txt"
-info "\nProvisioning started on device %s from %s\n" "$HWID" "$PART"
+info "Provisioning started on device $HWID from $PART"
 
 ## try provision wifi
 if [[ ! -f "wifi.txt" ]]; then
