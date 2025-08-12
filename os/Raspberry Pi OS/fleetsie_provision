@@ -314,6 +314,20 @@ cd $tmp/fleetsie
 LOGFILE="$PWD/fleetsie_provisioning_log.txt"
 info "Provisioning started on device $HWID from $PART"
 
+# set the password for user 1000
+PASSWDFILE=password.txt
+if [[ -f PASSWDFILE ]]; then
+    info "found file $PASSWDFILE; will try change password for user $USER1000"
+    fix_line_endings $PASSWDFILE
+    read password < $PASSWDFILE
+    if [[ "$password" != "change-this-password" ]]; then
+	echo "$USER1000::$password" | chpasswd
+	info "changed password for user $USER1000 to '$password'"
+    else
+	info "password.txt file has not been editted - the password for user $USER1000 is left unchanged."
+    fi
+fi
+
 ## try provision wifi
 if [[ ! -f "wifi.txt" ]]; then
     fatal "can't find fleetsie/wifi.txt on USB disk\nfirst line should be the WiFi network name (ESSID), second line should be the WiFi password"

@@ -184,6 +184,10 @@ if [[ "$USB_PARTITION" != "" ]]; then
     FLEETSUBDIR=/home/fleetsie/fleets/$FLEET_NAME
     # create both top-level fleetsie directory and the 'custom' subdirectory
     mkdir -p "$PROVDIR/custom"
+
+    # password, with bogus password for user 1000
+    printf "change-this-password\r\n" > "$PROVDIR/password.txt"
+
     # fleet file, with fleet host, flee name and known_hosts entry for the fleet host
     KNOWNHOSTS=`ssh-keyscan -t ed25519 -H $FLEET_HOST  2>/dev/null`
     printf "%s\r\n%s\r\n" "$FLEET_HOST" "$FLEET_NAME" "$KNOWNHOSTS" > "$PROVDIR/fleet.txt"
@@ -210,8 +214,10 @@ if [[ "$USB_PARTITION" != "" ]]; then
     cat <<EOF
 *** Provisioning to $USB_PARTITION is complete. ***
 
-You can further customize the provisioning disk by adding files
-and/or directories to the 'fleetsie/custom' subdirectory:
+You can further customize the provisioning disk by modifying the
+files 'wifi.txt', 'fleet.txt', 'password.txt'.
+You can also modify the 'fleetsie/custom' subdirectory; some items are
+treated specially:
 
  - setup script:
 
