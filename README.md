@@ -4,6 +4,27 @@ Simple tool to provision and manage a fleet of linux-based iot devices.
 
 ![alt text](https://github.com/jbrzusto/fleetsie/blob/main/fleetsie_in_a_picture.jpg?raw=true)
 
+1. Admin uses `fleetsie_mod` to convert a standard OS disk image file to
+   a modified OS disk image file.  So far, only Raspberry Pi OS images
+   are supported.
+2. Admin uses the `fleetsie_gen` script to create USB provisioning
+   disk(s) and allocate devices on the server.
+3. Technician writes modified OS image to SD cards, e.g. with
+   `rpi-imager`
+4. Technician installs these SD cards into the devices.
+5. Technician attaches USB provisioning disk to device, powers up
+   device, then waits until LED flashing pattern shows provisioning is
+   complete.
+6. During provisioning, each device connects to the fleet server via
+   `ssh` (with fleet credentials and a one-time password supplied on
+   the USB disk) and runs `fleetsie_auth` to obtain device
+   credentials.  Upon success, the device will appear on the server
+   dashboard.
+7. Technician plugs headphones into the audio jack on the device to
+   hear a voice repeating the device ID.  Technician attaches a
+   physical label to the device and writes the ID on it.  The USB disk
+   can now be removed and used to provision another device.
+
 ## Parts
 
 **`fleetsie_mod`**: modifies a stock OS image for use with `fleetsie`
