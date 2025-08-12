@@ -39,6 +39,11 @@ function report_full() {
     exit
 }
 
+function report_bad() {
+    printf "Bad\n"
+    exit
+}
+
 # sanitize removes any characters outside of [_:] and [:alnum:] from the named env var
 function sanitize() {
     declare -n v=$1
@@ -86,7 +91,7 @@ sanitize OTP
 # leak information to a totally unauthorized user.
 sqlite resp "select count(*) from devices where otp='$OTP'"
 if [[ "$resp" == "0" ]]; then
-    die "invalid one-time password"
+    report_bad
 fi
 
 # check whether this hwid already registered
