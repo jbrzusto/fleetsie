@@ -149,13 +149,13 @@ function mount_image () {
 	mkdir -p $orig $merged $upper
 	sudo mount -o ro /dev/mapper/$x $orig
 	pname=`sudo blkid -s LABEL -o value  /dev/mapper/$x`
-	sudo unionfs -o cow -o hide_meta_files $upper=RW:$orig=RO $merged
-	rm -f $pname
-	ln -s $merged $pname
+	sudo unionfs -o cow -o allow_other -o hide_meta_files $upper=RW:$orig=RO $merged
+	sudo rm -f $pname
+	sudo ln -s $merged $pname
 	echo -n "$pname: " && grep $merged /etc/mtab
 	i=$(( $i + 1 ))
     done
-    # flag that image is mouned
+    # flag that image is mounted
     touch .mounted
 }
 
