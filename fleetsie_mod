@@ -5,19 +5,18 @@
 function usage () {
     # usage below is copied from the `fleetsiemod` section of README.md
     cat <<EOF
-## 'fleetsiemod' - Manage Creation of a Modified OS Image
 
 ### Commands:
 
-  fleetsiemod init PATH/OSNAME.img.xz
+  fleetsie_mod init PATH/OSNAME.img.xz
 
 - decompresses the image using xz and writes it to file OSNAME.img in the current directory
-- mounts all partitions in the image, as is done by the 'fleetsie mount' command below
+- mounts all partitions in the image, as is done by the 'fleetsie_mod mount' command below
 - creates a symlink from '.image -> OSNAME.img'
 - initializes a git repo in 'my_work', where overlays for each of the partitions in 'OSNAME.img'
 will be created, so that you can use version control to track your work.
 
-  fleetsiemod mount
+  fleetsie_mod mount
 
 - mounts each partition in 'OSNAME.img' read-only to directory 'original/part_N'
 - creates an overlay mount for each partition; the merged mount is in 'part_N', where N is 1, 2, ...
@@ -25,16 +24,16 @@ will be created, so that you can use version control to track your work.
 if they do not already exist.
 - symlinks are created from the underlying partition labels to part_N; e.g. 'bootfs -> part_1'
 
-  fleetsiemod unmount
+  fleetsie_mod unmount
 
 - unmounts the merged and original filesystems
 - changes made remain available in the '.new_N' directories and will be
-automatically restored the next time 'fleetsie mount OSNAME.img' is run
+automatically restored the next time 'fleetsie_mount OSNAME.img' is run
 
-  fleetsiemod install [OSTYPE]
+  fleetsie_mod install [OSTYPE]
 
 - uses instructions customized for 'OSTYPE' to install 'fleetsie' in the overlain OS image.\
-- 'OSTYPE' defaults to 'Raspberry Pi OS'; do 'fleetsiemod install --help' to list others.
+- 'OSTYPE' defaults to 'Raspberry Pi OS'; do 'fleetsie_mod install --help' to list others.
 - after this command, you can make any further customizations to the image by manipulating files
 in the 'my_work/part_N' directories
 - in particular, these files are treated specially:
@@ -52,32 +51,42 @@ in the 'my_work/part_N' directories
     setup script mentioned previously
   - my_work/part_2/opt/fleetsie/custom_pre/cleanup - if this exists, it is a script which will be run
     early by the fleetsie_provision script, right after extracting the overlay image just mentioned
-  - my_work/part_2/opt/fleetsie/custom_pre/pronunciation.txt - if this exists, it is used to help
-    the text-to-speech system pronounce words or phrases associated with your project.  Each pair
-    of lines in the file gives a 'from' and a 'to' expression, respectively. These pairs will be
-    applied by bash in order when modifying a string 's' before speaking it.  Specifically,
-    each pair causes bash to do 's="${s//$from/$to}"'
 
-- do 'fleetsiemod save' to create a new installable image that includes 'fleetsie' and your changes
+  - my_work/part_2/opt/fleetsie/custom_pre/pronunciation.txt - if
+    this exists, it is used to help the text-to-speech system
+    pronounce words or phrases associated with your project, by
+    providing phonetically-spelled replacements. The file is treated
+    as consecutive pairs of lines, with the first line in the pair
+    giving a 'from' expression, and the second line, a 'to'
+    expression. These pairs will be applied by bash in order when
+    modifying a string 's' before speaking it.  Specifically, each
+    pair causes bash to do 's="${s//$from/$to}"'.  For example,
+    the two lines:
 
-  fleetsiemod save [NEW_IMAGE_NAME]
+        sqlite
+        ess-cue-light
+
+    cause the TTS system to pronounce 'sqlite' as 'ess-cue-light'.
+
+- do 'fleetsie_mod save' to create a new installable image that includes 'fleetsie' and your changes
+
+  fleetsie_mod save [NEW_IMAGE_NAME]
 
 - writes the filesystem with your changes to a new, xz-compressed image
 - if 'NEW_IMAGE_NAME' is omitted, it defaults to 'OSNAME_fleetsie.img',
-- normally, you would only do 'fleetsiemod save' after doing 'fleetsiemod install'
+- normally, you would only do 'fleetsie_mod save' after doing 'fleetsie_mod install'
 and, optionally, making further changes to the 'part_N' directories
 
-  fleetsiemod updatesd DEVPART1 DEVPART2 ...
+  fleetsie_mod updatesd DEVPART1 DEVPART2 ...
 
 - updates the filesystem partitions on an attached SD card from the current image
 - 'DEVPART1' is updated from the partition 1 (at 'merged/part_1')
 - 'DEVPART2' is updated from the partition 2 (at 'merged/part_2')
 - and so on...
 - don't include the "/dev/" in DEVPARTN
-- example:  fleetsiemod updatesd sdc1 sdc2
+- example:  fleetsie_mod updatesd sdc1 sdc2
 
-This can be useful for testing the provisioning code, by avoiding having to completely rewrite
-the SD card each time.
+This can be useful for testing the provisioning code, by avoiding having to completely rewrite the SD card each time.
 
 EOF
     exit 1

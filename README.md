@@ -33,7 +33,7 @@ sudo apt install xz-utils kpartx awk unionfs-fuse
 ```
 
 - decompresses the image using xz and writes it to file OSNAME.img in the current directory
-- mounts all partitions in the image, as is done by the `fleetsie mount` command below
+- mounts all partitions in the image, as is done by the `fleetsie_mod mount` command below
 - creates a symlink from `.image -> OSNAME.img`
 - initializes a git repo in `my_work`, where overlays for each of the partitions in `OSNAME.img`
 will be created, so that you can use version control to track your work.
@@ -54,18 +54,54 @@ if they do not already exist.
 
 - unmounts the merged and original filesystems
 - changes made remain available in the `.new_N` directories and will be
-automatically restored the next time `fleetsie mount OSNAME.img` is run
+automatically restored the next time `fleetsie_mount OSNAME.img` is run
 
 ```sh
   fleetsie_mod install [OSTYPE]
 ```
 
-- uses instructions customized for `OSTYPE` to install
-  `fleetsie.service` and `fleetsie_provision` in the overlain OS
-  image.
-- `OSTYPE` defaults to `Raspberry Pi OS`; do `fleetsie_mod install --help` to list other options, if any.
-- after this command, you can make any further customizations to the image by manipulating files
-in the `part_N` directories
+- uses instructions customized for `OSTYPE` to install `fleetsie` in
+  the overlain OS image.\
+- `OSTYPE` defaults to `Raspberry Pi OS`; do `fleetsie_mod install
+  --help` to list others.
+- after this command, you can make any further customizations to the
+  image by manipulating files in the `my_work/part_N` directories
+- in particular, these files are treated specially:
+  - `my_work/part_2/opt/fleetsie/custom_pre` is a folder which gets
+    copied onto the SD card so that the running system will see it in
+    `/opt/fleetsie/custom_pre` The fleetsie_provision script uses it
+    early in the provisioning process, before even trying to find the
+    USB provisioning disk.
+  - `my_work/part_2/opt/fleetsie/custom_pre/setup` - if this exists,
+    it is a script which will be run early by the `fleetsie_provision`
+    script
+  - `my_work/part_2/opt/fleetsie/custom_pre/packages` - if this folder
+    exists, any .deb packages it holds will be installed early by the
+    fleetsie_provision script (after `setup` is run, but before
+    `overlay` is extracted)
+  - `my_work/part_2/opt/fleetsie/custom_pre/overlay.tar.xz` - if this
+    exists, it is an archive which will be extracted to "/" as user
+    root early by the fleetsie_provision script, right after running
+    the setup script mentioned previously
+  - `my_work/part_2/opt/fleetsie/custom_pre/cleanup` - if this exists,
+    it is a script which will be run early by the fleetsie_provision
+    script, right after extracting the overlay image just mentioned
+  - `my_work/part_2/opt/fleetsie/custom_pre/pronunciation.txt` - if
+    this exists, it is used to help the text-to-speech system
+    pronounce words or phrases associated with your project, by
+    providing phonetically-spelled replacements. The file is treated
+    as consecutive pairs of lines, with the first line in the pair
+    giving a `from` expression, and the second line, a `to`
+    expression. These pairs will be applied by bash in order when
+    modifying a string `s` before speaking it.  Specifically, each
+    pair causes bash to do `s="${s//$from/$to}"`.  For example,
+	the two lines:
+```
+       sqlite
+	   ess-cue-light
+```
+    cause the TTS system to pronounce `sqlite` as `ess-cue-light`.
+
 - do `fleetsie_mod save` to create a new installable image that includes `fleetsie` and your changes
 
 ```sh
@@ -88,6 +124,7 @@ and, optionally, making further changes to the `part_N` directories
 - don't include the `/dev/` in `DEVPARTN`
 - example:  `fleetsie_mod updatesd sdc1 sdc2`
 
+This can be useful for testing the provisioning code, by avoiding having to completely rewrite the SD card each time.
 ## fleetsie.service
 
 - installed and enabled by `fleetsie_mod` on the OS image
