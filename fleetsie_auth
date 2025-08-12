@@ -26,17 +26,17 @@
 # die returns an error to the ssh client, and exits
 function die() {
     printf "Error\n$1\n"
-    exit 1
+    exit
 }
 
 function suggest_trying() {
     printf "Try\n$1\n"
-    exit 1
+    exit
 }
 
 function report_full() {
     printf "Full\n"
-    exit 1
+    exit
 }
 
 # sanitize removes any characters outside of [_:] and [:alnum:] from the named env var
