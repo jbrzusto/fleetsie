@@ -10,10 +10,6 @@
 # - initially, to /home/pi/fleetsie_provision.log
 # - once the provisioning USB disk is detected, to USB:/fleetsie/fleetsie_provision.log
 
-# initial provisioning log is in home folder on sd card, since
-# no USB drive found yet
-LOGFILE="/home/$USER1000/fleetsie_provisioning_log.txt"
-
 # fatal is called for a fatal error.  It writes any supplied arguments
 # to $LOGFILE if defined, and then just slowly flash the red LED
 function fatal() {
@@ -197,6 +193,10 @@ HWID=`cat /sys/class/net/eth0/address`
 
 # get name of user with id=1000, typically the first non-privileged user.
 USER1000=`id -nu 1000`
+
+# initial provisioning log is in home folder on sd card, since
+# no USB drive found yet
+LOGFILE="/home/$USER1000/fleetsie_provisioning_log.txt"
 
 # perform any pre-customization from /opt/fleetsie
 PRE_CUSTOM_DIR=/opt/fleetsie/custom_pre
