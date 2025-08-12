@@ -140,6 +140,8 @@ fi
 if [[ "$1" =~ ^[0-9]+$ ]]; then
     NUM=$1
     shift
+else
+    NUM=0
 fi
 USB_PARTITION="$1"
 
@@ -181,7 +183,7 @@ if [[ "$USB_PARTITION" != "" ]]; then
     PROVDIR="$TARGET/fleetsie"
     FLEETSUBDIR=/home/fleetsie/fleets/$FLEET_NAME
     # create both top-level fleetsie directory and the 'custom' subdirectory
-    mkdir -p "$PROVDIR/cusom"
+    mkdir -p "$PROVDIR/custom"
     # fleet file, with fleet host, flee name and known_hosts entry for the fleet host
     KNOWNHOSTS=`ssh-keyscan -t ed25519 -H $FLEET_HOST  2>/dev/null`
     printf "%s\r\n%s\r\n" "$FLEET_HOST" "$FLEET_NAME" "$KNOWNHOSTS" > "$PROVDIR/fleet.txt"
@@ -198,12 +200,12 @@ if [[ "$USB_PARTITION" != "" ]]; then
     scp fleetsie@$FLEET_HOST:$FLEET_CREDS* "$PROVDIR"
 
     # copy ssh tunnel service and script
-    cp ./ssh-tunnel.service ./ssh_tunnel.sh "$PROVDIR"
+    cp $FLEETSIE_DIR/ssh-tunnel.service $FLEETSIE_DIR/ssh_tunnel.sh "$PROVDIR"
 
     # generate a .zip file with the contents of the USB partition, so others
     # can create their own disk
     USB_FILES_FOR_DISK=`pwd`/${FLEET_NAME}_files_for_usb_disk.zip
-    pushd $USB_PARTITION && zip -r $USB_FILES_FOR_DISK . && popd
+    pushd "$TARGET" && zip -r $USB_FILES_FOR_DISK . && popd
 
     cat <<EOF
 *** Provisioning to $USB_PARTITION is complete. ***
@@ -215,7 +217,7 @@ and/or directories to the 'fleetsie/custom' subdirectory:
 
      Add a script called 'setup' to the directory.  It will be run as root on
      the device after it has obtained credentials for the fleet
-     server.  It is run from the `fleetsie/custom` directory on the provisioning disk.
+     server.  It is run from the 'fleetsie/custom' directory on the provisioning disk.
 
  - overlay archive:
 
@@ -236,6 +238,9 @@ fleetsie directory has been created.
 
 Make sure to unmount $USB_PARTITION before removing the drive.
 
+EOF
+    fi
+    cat <<EOF
 A copy of the files for the USB disk has been created in
 
    $USB_FILES_FOR_DISK
@@ -244,8 +249,7 @@ You can share this with others so they can create their own provisioning
 USB disk by unzipping the contents to the top level of their own USB drive.
 If you customize, make sure to update the .zip archive like so:
 
-   pushd $USB_PARTITION && zip -r $USB_FILES_FOR_DISK . && popd
+   pushd "$TARGET" && zip -r $USB_FILES_FOR_DISK . && popd
 
 EOF
-    fi
 fi
