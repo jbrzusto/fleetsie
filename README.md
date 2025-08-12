@@ -2,7 +2,7 @@
 
 Simple tool to provision and manage a fleet of linux-based iot devices.
 
-![alt text](http://github.com/jbrzusto/fleetsie/fleetsie_in_a_picture.jpg)
+![alt text](https://github.com/jbrzusto/fleetsie/blob/main/fleetsie_in_a_picture.jpg?raw=true)
 
 ## Parts
 
