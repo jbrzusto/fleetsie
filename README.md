@@ -69,7 +69,7 @@ automatically restored the next time `fleetsie_mount OSNAME.img` is run
 - in particular, these files are treated specially:
   - `my_work/part_2/opt/fleetsie/custom_pre` is a folder which gets
     copied onto the SD card so that the running system will see it in
-    `/opt/fleetsie/custom_pre` The fleetsie_provision script uses it
+    `/opt/fleetsie/custom_pre` The `fleetsie_provision` script uses it
     early in the provisioning process, before even trying to find the
     USB provisioning disk.
   - `my_work/part_2/opt/fleetsie/custom_pre/setup` - if this exists,
@@ -78,11 +78,15 @@ automatically restored the next time `fleetsie_mount OSNAME.img` is run
   - `my_work/part_2/opt/fleetsie/custom_pre/packages` - if this folder
     exists, any .deb packages it holds will be installed early by the
     fleetsie_provision script (after `setup` is run, but before
-    `overlay` is extracted)
+    `overlay` is extracted).  This allows installing extra packages onto
+	the SD card before network connectivity is established.
   - `my_work/part_2/opt/fleetsie/custom_pre/overlay.tar.xz` - if this
     exists, it is an archive which will be extracted to "/" as user
     root early by the fleetsie_provision script, right after running
-    the setup script mentioned previously
+    the `setup` script mentioned previously.  This is another way of
+	modifying the SD card before network connectivity; it is meant for
+	files and changes which you haven't had time (or don't intend) to
+	package.
   - `my_work/part_2/opt/fleetsie/custom_pre/cleanup` - if this exists,
     it is a script which will be run early by the fleetsie_provision
     script, right after extracting the overlay image just mentioned
@@ -208,6 +212,14 @@ fleetsie_gen creates this layout on the USB drive:
 ```
 
 - top-level folder
+
+```
+/fleetsie/password.txt
+```
+
+  - if this exists, its contents become the password for user 1000
+    (e.g. `pi` on a Raspberry Pi). By default, a stub is created,
+	which needs to be modified.
 
 ```
 /fleetsie/wifi.txt
