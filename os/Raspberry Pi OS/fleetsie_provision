@@ -10,6 +10,10 @@
 # - initially, to /home/pi/fleetsie_provision.log
 # - once the provisioning USB disk is detected, to USB:/fleetsie/fleetsie_provision.log
 
+# initial provisioning log is in home folder on sd card, since
+# no USB drive found yet
+LOGFILE="/home/$USER1000/fleetsie_provisioning_log.txt"
+
 # fatal is called for a fatal error.  It writes any supplied arguments
 # to $LOGFILE if defined, and then just slowly flash the red LED
 function fatal() {
@@ -52,6 +56,32 @@ function fix_line_endings () {
 	cat "$tmp" > "$1"
 	rm "$tmp"
     fi
+}
+
+# fix file permissions and ownership on the ~/.ssh for the user passed as $1
+function fixup_ssh_perms () {
+    if [[ "$1" == "root" ]]; then
+	DIR=/root/.ssh
+    else
+	DIR=/home/$1/.ssh
+    fi
+    # ensure file ownership is correct
+    chown -R $1:$1 $DIR
+    # ensure directory permissions are u=rwx, og=rx
+    chmod u=rwx,og=rx $DIR
+    # ensure authorized_keys permission is u=rw, og=r
+    chmod u=rw,og=r $DIR/authorized_keys || true
+    # ensure known_hosts permission is u=rw, og=r
+    chmod u=rw,og=r $DIR/authorized_keys || true
+    # ensure config permission is u=rw, og=r
+    chmod u=rw,og=r $DIR/config || true
+    # ensure public keys are u=rw,og=r and private keys are u=rw,og=
+    pushd $DIR
+    for pk in *.pub; do
+	chmod u=rw,og=r $pk
+	chmod u=rw,og= ${pk%.pub}
+    done
+    popd
 }
 
 # use the RPi LEDS (red, green)
@@ -103,9 +133,8 @@ function init_speech() {
     # or was already in the OS image.
     # I find the en-GB voice more clear than the en-US voice.
     if which pico2wave > /dev/null; then
-	SPEECH_COMMAND="pico2wave -l en-GB -w /tmp/$SPOKEN_MESSAGE_FILE_TEMP"
-	nohup "bash -c 'while true; do if [[ -f $SPOKEN_MESSAGE_FILE ]]; then aplay $SPOKEN_MESSAGE_FILE; fi; sleep 1; done'" &
-	disown %1
+	SPEECH_COMMAND="pico2wave -l en-GB -w $SPOKEN_MESSAGE_FILE_TEMP"
+	nohup bash -c "while true; do if [[ -f $SPOKEN_MESSAGE_FILE ]]; then aplay $SPOKEN_MESSAGE_FILE; fi; sleep 1; done" &
     fi
 }
 
@@ -122,8 +151,8 @@ function say() {
     mv -f $SPOKEN_MESSAGE_FILE_TEMP $SPOKEN_MESSAGE_FILE
 }
 
-init_leds()
-init_speech()
+init_leds
+init_speech
 
 # get unique HWID for this device
 HWID=`cat /sys/class/net/eth0/address`
@@ -131,22 +160,19 @@ HWID=`cat /sys/class/net/eth0/address`
 # do some raspi-config stuff to avoid needing the user to do it
 # in rpi-imager
 
-# enable ssh
-raspi-config nonint do_ssh 1
+info "enabling ssh service"
+
+# enable ssh - doing this with "raspi-config nonint do_ssh 1" did not work
+touch /boot/firmware/ssh
+systemctl start sshswitch.service
+
+info "using raspi-config to set the wifi country code to Canada"
+
 # set the wifi country (without this, rfkill blocks use of wifi)
 raspi-config nonint do_wifi_country CA
 
 # get name of user with id=1000, typically the first non-privileged user.
 USER1000=`id -nu 1000`
-
-# initial provisioning log is in home folder on sd card, since
-# no USB drive found yet
-LOGFILE="/home/$USER1000/fleetsie_provisioning_log.txt"
-
-info "waiting for systemctl is-system-running --wait"
-
-# wait for systemctl to have brought up all the usual units
-systemctl is-system-running --wait
 
 # perform any pre-customization from /opt/fleetsie
 PRE_CUSTOM_DIR=/opt/fleetsie/custom_pre
@@ -276,12 +302,23 @@ if [[ $con != 1 ]]; then
     fatal "unable to connect to any WiFi networks given in wifi.txt"
 fi
 
+info "waiting for system clock to be synchronized to network time"
+
+while true; do
+    if [[ -f /var/lib/systemd/timesync/clock ]]; then
+	break
+    fi
+    sleep 1
+done
+
 if ! sqlite3 < /dev/null; then
     info "updating apt and installing sqlite3"
     if ! apt update || ! apt install sqlite3 ; then
 	fatalf "unable to install sqlite3"
     fi
 fi
+
+info "looking for fleet ssh keys in fleet.txt"
 
 ## try get ssh keys for fleet server
 if [[ ! -f "fleet.txt" ]]; then
@@ -312,8 +349,7 @@ info "Appending known_hosts from USB drive to /root/.ssh/known_hosts"
 mkdir -p /root/.ssh
 echo "$FLEETKNOWNHOST" >> /root/.ssh/known_hosts
 cp  $PRIVKEY $PUBKEY /root/.ssh/
-chmod u=rw,og=r /root/.ssh/$PUBKEY
-chmod u=rw,og= /root/.ssh/$PRIVKEY
+fixup_ssh_perms root
 
 info "sshing to fleet server $FLEETHOST"
 
@@ -335,22 +371,25 @@ while true; do
     {
 	read rv
 	case $rv in
-	    bad)
+	    Bad)
 		info "server $FLEETHOST reports OTP=$OTP is bad; trying next OTP"
 		sqlite3 $DB "delete from devices where otp='$OTP'"
 		;;
-	    try)
+	    Try)
 		read DEVNUM
 		# server suggests trying device with id_in_fleet = DEVNUM; delete devices with smaller id_in_fleet
 		# because the server is effectively telling us they have been claimed.
 		sqlite3 $DB "delete from devices where id_in_fleet < $DEVNUM;"
 		info "server $FLEETHOST suggests trying device with id_in_fleet=$DEVNUM"
 		;;
-	    error)
+	    Error)
 		read ERRMSG
 		fatal "server $FLEETHOST reported this error: $ERRMSG"
 		;;
-	    ok)
+            Full)
+                fatal "server $FLEETHOST reports there are no available devices allocated to the $FLEETNAME fleet.  Contact an administrator to fix this."
+                ;;
+	    Ok)
 		if ! read HOSTNAME || ! read FLEETUSER || ! read PORT || ! read SRVPUBKEY || ! read SRVPRIVKEY || ! read DEVAUTHKEY ; then
 		    fatal "server $FLEETHOST gave bad reply: `cat $REPLY_FILE`"
 		fi
@@ -359,6 +398,7 @@ while true; do
 		echo "$HOSTNAME" /etc/hostname
 		info "Saving ssh keys for access to $HOSTNAME and $FLEETHOST"
 		mkdir -p /home/${USER1000}/.ssh
+		echo "$FLEETKNOWNHOST" >> /home/${USER1000}/.ssh/known_hosts
 		ln -s "$PORT" /home/${USER1000}/.ssh/fleetsie_tunnel_port
 		echo "$SRVPUBKEY" > /home/${USER1000}/.ssh/fleetsie.pub
 		echo "$SRVPRIVKEY" > /home/${USER1000}/.ssh/fleetsie
@@ -373,15 +413,16 @@ Host fleetsie
    IdentityFile ~/.ssh/fleetsie
    IdentitiesOnly yes
 EOF
-		chown -R ${USER1000}:${USER1000} /home/${USER1000}/.ssh
-		chmod oug-r /home/${USER1000}/fleetsie
-		chmod og-w -R /home/${USER1000}/.ssh
-		if ! ssh -i /home/${USER1000}/.ssh/fleetsie fleetsie date > /dev/null 2>/tmp/ssherror.txt; then
+		fixup_ssh_perms $USER1000
+		if ! su -c "ssh -i /home/${USER1000}/.ssh/fleetsie fleetsie date" $USER1000 > /dev/null 2>/tmp/ssherror.txt; then
 		    fatal "could not login to $FLEETHOST with new credentials: `cat /tmp/ssherror.txt`"
 		fi
 		info "Removing entry with this OTP from devices table"
 		sqlite3 $DB "delete from devices where otp='$OTP'"
 		break
+                ;;
+            *) fatal "server $FLEETHOST replied to device claim request with unknown reponse: $rv"
+                ;;
 	esac
     } < $REPLY_FILE
 done
