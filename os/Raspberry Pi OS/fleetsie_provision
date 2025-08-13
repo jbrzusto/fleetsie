@@ -495,11 +495,19 @@ while true; do
 		echo "$HOSTNAME" /etc/hostname
 		if [[ "$USERPWD" ]]; then
 		    info "Setting server-supplied user password"
-		    echo "${USER1000}::$USERPWD" | chpasswd
+		    if ! echo "${USER1000}::$USERPWD" | chpasswd > /tmp/error.txt 2>&1; then
+			info "Failed to set user password; error was: `cat /tmp/error.txt`"
+		    else
+			info "Ok"
+		    fi
 		fi
 		if [[ "$ROOTPWD" ]]; then
 		    info "Setting server-supplied root password"
-		    echo "root::$ROOTPWD" | chpasswd
+		    if ! echo "root::$ROOTPWD" | chpasswd >/tmp/error.txt 2>&1; thena
+			info "Failed to set root password; error was: `cat /tmp/error.txt`"
+		    else
+			info "Ok"
+		    fi
 		fi
 		info "Saving credentials for zabbix_agent2 and zabbix_sender"
 		echo "$ZABBIXPSK" > /etc/zabbix/psk.txt
