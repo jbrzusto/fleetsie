@@ -270,6 +270,17 @@ for app in ssh sshd; do
     fi
 done
 
+# install and enable ssh-tunnel.service
+src=/opt/fleetsie/ssh-tunnel.service
+dst=/etc/systemd/system/ssh-tunnel.service
+if [[ -f "$src" ]]; then
+    mv $src $dst
+    chown root:root $dst
+    chmod oug-x $dst
+    systemctl daemon-reload
+    systemctl enable --now ssh-tunnel
+fi
+
 # do some raspi-config stuff to avoid requiring the user to do it
 # in rpi-imager
 info "enabling ssh service"
