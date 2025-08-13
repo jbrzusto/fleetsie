@@ -121,6 +121,8 @@ fi
 
 # registration successful - drop record from provisioning DB and return details to user
 sqlite _ignore_ "attach database '$PDB' as db1; delete from db1.devices where otp='$OTP'"
+sqlite user_pwd "select user_pwd from devices where hwid='$HWID'"
+sqlite root_pwd "select root_pwd from devices where hwid='$HWID'"
 sqlite hostname "select hostname from devices where hwid='$HWID'"
 sqlite fleetuser "select fleetuser from devices where hwid='$HWID'"
 sqlite tunnel_port "select tunnel_port from devices where hwid='$HWID'"
@@ -128,4 +130,4 @@ sqlite srv_public_key "select server_public_key from devices where hwid='$HWID'"
 sqlite srv_private_key "select server_private_key from devices where hwid='$HWID'"
 sqlite dev_auth_key "select device_public_key from devices where hwid='$HWID'"
 
-printf "Ok\n%s\n%s\n%s\n%s\n%s\n%s\n" "$hostname" "$fleetuser" "$tunnel_port" "$srv_public_key" "$srv_private_key" "$dev_auth_key"
+printf "Ok\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n" "$user_pwd" "$root_pwd" "$hostname" "$fleetuser" "$tunnel_port" "$srv_public_key" "$srv_private_key" "$dev_auth_key"

@@ -337,7 +337,9 @@ cd $tmp/fleetsie
 LOGFILE="$PWD/fleetsie_provisioning_log.txt"
 info "Provisioning started on device $HWID from $PART"
 
-# set the password(s) for user 1000 and root
+# set the temporary password(s) for user 1000 and root
+# these will be overwritten by passwords received from
+# the server upon registering this device.
 PASSWDFILE=password.txt
 if [[ -f PASSWDFILE ]]; then
     info "found file $PASSWDFILE; will try change password for user $USER1000 and root"
@@ -475,12 +477,20 @@ while true; do
                 fatal "server $FLEETHOST reports there are no available devices allocated to the $FLEETNAME fleet.  Contact an administrator to fix this."
                 ;;
 	    Ok)
-		if ! read HOSTNAME || ! read FLEETUSER || ! read PORT || ! read SRVPUBKEY || ! read SRVPRIVKEY || ! read DEVAUTHKEY ; then
+		if ! read USERPWD || ! read ROOTPWD || ! read HOSTNAME || ! read FLEETUSER || ! read PORT || ! read SRVPUBKEY || ! read SRVPRIVKEY || ! read DEVAUTHKEY ; then
 		    fatal "server $FLEETHOST gave bad reply: `cat $REPLY_FILE`"
 		fi
 		info "Successfully claimed!"
 		info "Setting hostname to $HOSTNAME"
 		echo "$HOSTNAME" /etc/hostname
+		if [[ "$USERPWD" ]]; then
+		    info "Setting server-supplied user password"
+		    echo "${USER1000}::$USERPWD" | chpasswd
+		fi
+		if [[ "$ROOTPWD" ]]; then
+		    info "Setting server-supplied root password"
+		    echo "root::$ROOTPWD" | chpasswd
+		fi
 		info "Saving ssh keys for access to $HOSTNAME and $FLEETHOST"
 		mkdir -p /home/${USER1000}/.ssh
 		echo "$FLEETKNOWNHOST" >> /home/${USER1000}/.ssh/known_hosts

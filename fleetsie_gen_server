@@ -152,6 +152,8 @@ CREATE TABLE devices (
      ts_generated DOUBLE NOT NULL,            -- unix timestamp for when this device record was generated
      ts_registered DOUBLE,                    -- unix timestamp for when this device was registered; NULL means not registered yet
      tunnel_port INTEGER NOT NULL,            -- TCP port mapped on server back to device SSH server port
+     user_pwd VARCHAR,                        -- plaintext password for user 1000 on device (yes, should be stored hashed, not plaintext!)
+     root_pwd VARCHAR,                        -- plaintext password for root user on device (yes, should be stored hashed, not plaintext!)
      device_public_key VARCHAR NOT NULL,      -- public key which can be used to login as user 1000 on device
      device_private_key VARCHAR NOT NULL,     -- private key which can be used to login as user 1000 on device
      server_public_key VARCHAR NOT NULL,      -- public key which device will use to ssh into fleet server
