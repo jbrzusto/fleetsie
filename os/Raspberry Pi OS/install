@@ -12,6 +12,10 @@ ROOTFS=$TARGET_ROOT/rootfs
 SYSTEMD=$ROOTFS/etc/systemd/system
 OPT=$ROOTFS/opt/fleetsie
 
+# The top-level directory for fleetsie on the user PC.
+# (change if the hierarchy of this repository changes)
+FLEETSIE_DIR=../..
+
 FIRMWARE_ARCH=$TARGET_ROOT/firmware-stable.zip
 FIRMWARE_URL=https://github.com/raspberrypi/firmware/archive/refs/heads/stable.zip
 
@@ -36,8 +40,13 @@ ln -sf /etc/systemd/system/fleetsie-provision.service $SYSTEMD/multi-user.target
 mkdir -p $OPT
 DST=$OPT/fleetsie_provision
 cp ./fleetsie_provision $DST
-chown root:root $DST
 chmod oug+x $DST
+
+# copy any files needed from the fleetsie repo top-level dir
+cp $FLEETSIE_DIR/sshd_config-dev $OPT/sshd_config
+cp $FLEETSIE_DIR/ssh_config-dev $OPT/ssh_config
+
+# create skeleton dirs and readme files
 mkdir -p $OPT/custom_pre/packages
 cat > $OPT/custom_pre/readme.txt <<EOF
 This folder contains files used early in the device provisioning process.

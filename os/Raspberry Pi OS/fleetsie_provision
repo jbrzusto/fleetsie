@@ -257,9 +257,21 @@ else
     info "No $PRE_CUSTOM_DIR found - skipping custom pre-provisioning."
 fi
 
+# replace ssh_config, sshd_config with fleetsie versions, if present
+for app in ssh sshd; do
+    src=/opt/fleetsie/${app}_config
+    dst=/etc/ssh/${app}_config
+    if [[ -f $src ]]; then
+	info "replacing $dst with fleetsie version"
+	mv $dst ${dst}_saved_`date -Isecond`
+	mv $src $dst
+	chown root:root $dst
+	chmod u=rw,og=r $dst
+    fi
+done
+
 # do some raspi-config stuff to avoid requiring the user to do it
 # in rpi-imager
-
 info "enabling ssh service"
 
 # enable ssh - doing this with "raspi-config nonint do_ssh 1" did not work
