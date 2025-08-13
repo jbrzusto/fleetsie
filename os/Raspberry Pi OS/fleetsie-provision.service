@@ -1,7 +1,6 @@
 [Unit]
 Description=fleetsie system provisioner
 After=local-fs.target
-After=system-time-wait-sync.service
 
 [Service]
 Type=oneshot
