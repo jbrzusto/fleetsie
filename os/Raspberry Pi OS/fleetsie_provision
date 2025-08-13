@@ -222,7 +222,7 @@ if [[ -d $PRE_CUSTOM_DIR ]]; then
     if [[ -d packages ]]; then
 	pushd packages
 	info "Installing custom_pre packages:\n`ls -1`\n"
-	if dpkg-deb -i ./*deb 2>/tmp/packagelog.txt; then
+	if dpkg -i ./*deb 2>/tmp/packagelog.txt; then
 	    info "Successful."
 	else
 	    info "failed to install packages: `cat /tmp/packagelog.txt`"
