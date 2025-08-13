@@ -2,17 +2,19 @@
 #
 # Maintain a list of connected fleetsie devices in /run/fleetsie/FLEET
 #
-# This script is run when a fleetsie-provisioned device logs into the server.
-# It creates a symlink like  /run/fleetsie/FLEET/FLEET-N -> PORT
+# This script is forced to run when the device ssh's in by the
+# clause `command="/home/fleetsie/fleetsie_login"` in the corresponding
+# line in /home/fleetsie_FLEET/.ssh/authorized_keys. That line also includes
+# clauses to set environment variables "FLEETSIE_FLEET", "FLEETSIE_HOST" and "FLEETSIE_PORT".
+#
+# This script creates a symlink like /run/fleetsie/dev/FLEET/FLEET-N -> PORT
 # where FLEET is a fleet name, FLEET-N is the hostname for the Nth device int the FLEET,
 # and PORT is the TCP port which is mapped back to the device's SSH server.
 #
 # The symlink is removed when this script exits.
 #
-# This script is forced to run when the device ssh's in by the
-# clause `command="/home/fleetsie/fleetsie_login"` in the corresponding
-# line in /home/fleetsie_FLEET/.ssh/authorized_keys. That line also includes
-# clauses to set environment variables "FLEETSIE_FLEET", "FLEETSIE_HOST" and "FLEETSIE_PORT".
+# Also, this script sends a connected or disconnected message to the fleetsie.fleet.conlog
+# item of the host $FLEETSIE_FLEET on zabbix, giving the device IP address.
 
 LINKDIR=/run/fleetsie/dev/$FLEETSIE_FLEET
 LINK=$LINKDIR/$FLEETSIE_HOST
@@ -21,10 +23,12 @@ LINKTARGET=$FLEETSIE_PORT
 function create_link () {
     mkdir -p $LINKDIR
     ln -s -f $LINKTARGET $LINK
+    zabbix_sender -c /etc/zabbix/zabbix_sender_${FLEETSIE_FLEET}.conf -z localhost -p 10051 -s $FLEETSIE_FLEET -k fleetsie.fleet.conlog -o "$FLEETSIE_HOST @ ${SSH_CLIENT%% *}: connected" &
 }
 
 function remove_link () {
     rm -f $LINK
+    zabbix_sender -c /etc/zabbix/zabbix_sender_${FLEETSIE_FLEET}.conf -z localhost -p 10051 -s $FLEETSIE_FLEET -k fleetsie.fleet.conlog -o "$FLEETSIE_HOST @ ${SSH_CLIENT%% *}: disconnected" &
 }
 
 create_link

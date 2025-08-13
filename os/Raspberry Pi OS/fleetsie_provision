@@ -409,13 +409,15 @@ fi
 # the following follows instructions from here:
 #  https://www.zabbix.com/download?zabbix=7.4&os_distribution=raspberry_pi_os&os_version=12&components=agent_2&db=&ws=
 #
-info "downloading zabbix agent"
+info "installing zabbix-agent2 and zabbix-sender"
 wget https://repo.zabbix.com/zabbix/7.4/release/raspbian/pool/main/z/zabbix-release/zabbix-release_latest_7.4+debian12_all.deb
 dpkg -i zabbix-release_latest_7.4+debian12_all.deb
 apt update
 apt install -y zabbix-agent2 zabbix-sender
 cp -f $OPT/zabbix_agent2.conf /etc/zabbix
 cp -f $OPT/zabbix_sender.conf /etc/zabbix
+mkdir /zabbix
+chown zabbix:zabbix /zabbix
 
 info "looking for fleet ssh keys in fleet.txt"
 

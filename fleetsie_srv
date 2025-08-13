@@ -90,7 +90,7 @@ echo Installing zabbix server
 wget https://repo.zabbix.com/zabbix/7.4/release/ubuntu/pool/main/z/zabbix-release/zabbix-release_latest_7.4+ubuntu22.04_all.deb
 dpkg -i zabbix-release_latest_7.4+ubuntu22.04_all.deb
 apt update
-apt install -y zabbix-server-mysql zabbix-frontend-php zabbix-nginx-conf zabbix-sql-scripts zabbix-agent2
+apt install -y zabbix-server-mysql zabbix-frontend-php zabbix-nginx-conf zabbix-sql-scripts zabbix-agent2 zabbix-sender
 
 # generate the en_US.UTF-8 locale required for use of zabbix in english
 apt -y locales
