@@ -343,7 +343,7 @@ info "Provisioning started on device $HWID from $PART"
 # these will be overwritten by passwords received from
 # the server upon registering this device.
 PASSWDFILE=password.txt
-if [[ -f PASSWDFILE ]]; then
+if [[ -f $PASSWDFILE ]]; then
     info "found file $PASSWDFILE; will try change password for user $USER1000 and root"
     fix_line_endings $PASSWDFILE
     { read password && read password_root; } < $PASSWDFILE
