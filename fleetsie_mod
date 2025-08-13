@@ -182,7 +182,7 @@ function save_image () {
 
     # 2. Clone partition table
     printf "Cloning partition table from $LOOP_SRC to $LOOP_DST\n"
-    # This works, except it generates new UUIDs, which have to be corrected later in cmdline.txt and fstab
+    # This works, except it generates new Partition UUIDs, which have to be corrected later in cmdline.txt and fstab
     #    sfdisk -d "${LOOP_SRC}" | sfdisk "${LOOP_DST}"
     # So instead, we just assume it's a 512-byte MBR and copy it directly
     sudo dd if=$LOOP_SRC of=$LOOP_DST bs=512 count=1
