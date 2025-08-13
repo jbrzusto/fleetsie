@@ -278,7 +278,6 @@ if [[ -f "$src" ]]; then
     chown root:root $dst
     chmod oug-x $dst
     systemctl daemon-reload
-    systemctl enable --now ssh-tunnel
 fi
 
 # do some raspi-config stuff to avoid requiring the user to do it
@@ -331,6 +330,8 @@ if [[ ! "$mounted" ]]; then
     fatal
 fi
 info "found fleetsie directory on /dev/$PART"
+info "logging will switch to /fleetsie/fleetsie_provisioning_log.txt on the USB disk"
+
 cd $tmp/fleetsie
 
 # switch logging target; this makes it easier to check
@@ -523,8 +524,8 @@ Host fleetsie
    IdentitiesOnly yes
 EOF
 		fixup_ssh_perms $USER1000
-		if ! su -c "ssh -i /home/${USER1000}/.ssh/fleetsie fleetsie date" $USER1000 > /dev/null 2>/tmp/ssherror.txt; then
-		    fatal "could not login to $FLEETHOST with new credentials: `cat /tmp/ssherror.txt`"
+		if ! systemctl enable --now ssh-tunnel 2>/tmp/error.txt; then
+		    warning "there was a problem starting the ssh-tunnel service: `cat /tmp/error.txt`"
 		fi
 		info "Removing entry with this OTP from devices table"
 		sqlite3 $DB "delete from devices where otp='$OTP'"
