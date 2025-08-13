@@ -84,18 +84,18 @@ for f in fleetsie_login fleetsie_auth fleetsie_gen_server; do
 done
 
 echo Installing mariadb server
-apt install -y mariadb-server
+ssh $SSHUSER sudo apt install -y mariadb-server
 
 echo Installing zabbix server
-wget https://repo.zabbix.com/zabbix/7.4/release/ubuntu/pool/main/z/zabbix-release/zabbix-release_latest_7.4+ubuntu22.04_all.deb
-dpkg -i zabbix-release_latest_7.4+ubuntu22.04_all.deb
-apt update
-apt install -y zabbix-server-mysql zabbix-frontend-php zabbix-nginx-conf zabbix-sql-scripts zabbix-agent2 zabbix-sender
+ssh $SSHUSER sudo wget https://repo.zabbix.com/zabbix/7.4/release/ubuntu/pool/main/z/zabbix-release/zabbix-release_latest_7.4+ubuntu22.04_all.deb
+ssh $SSHUSER sudo dpkg -i zabbix-release_latest_7.4+ubuntu22.04_all.deb
+ssh $SSHUSER sudo apt update
+ssh $SSHUSER sudo apt install -y zabbix-server-mysql zabbix-frontend-php zabbix-nginx-conf zabbix-sql-scripts zabbix-agent2 zabbix-sender
 
 # generate the en_US.UTF-8 locale required for use of zabbix in english
-apt -y locales
-sudo locale-gen en_US.UTF-8
+ssh $SSHUSER sudo apt -y locales
+ssh $SSHUSER sudo locale-gen en_US.UTF-8
 
 # get certbot
-apt install -y certbot
+ssh $SSHUSER sudo apt install -y certbot
 exit 0
