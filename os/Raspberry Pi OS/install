@@ -30,7 +30,7 @@ EOF
     curl -L -o $FIRMWARE_ARCH $FIRMWARE_URL
 fi
 
-unzip -j -o -d $BOOTFS $FIRMWARE_ARCH **/start*.elf **/fixup*.dat
+unzip -j -o -d $BOOTFS $FIRMWARE_ARCH "firmware-stable/boot/start*.elf" "firmware-stable/boot/fixup*.dat"
 
 DST=$SYSTEMD/fleetsie-provision.service
 cp ./fleetsie-provision.service $DST
