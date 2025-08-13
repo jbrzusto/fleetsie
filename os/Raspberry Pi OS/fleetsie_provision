@@ -202,7 +202,7 @@ LOGFILE="/home/$USER1000/fleetsie_provisioning_log.txt"
 PRE_CUSTOM_DIR=/opt/fleetsie/custom_pre
 if [[ -d $PRE_CUSTOM_DIR ]]; then
     pushd $PRE_CUSTOM_DIR
-    PRFILE=pronunciations.txt
+    PRFILE=pronunciation.txt
     if [[ -f $PRFILE ]]; then
 	info "Reading extra pronunciations from custom_pre/$PRFILE"
 	fix_line_endings $PRFILE
