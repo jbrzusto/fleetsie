@@ -1,0 +1,79 @@
+#!/bin/bash
+#
+# usage copied from section on fleetsie_map in README.md
+#
+function usage() {
+    echo <<EOF
+
+fleetsie_ports - forward local ports to the ssh port for each device in a
+fleet.
+
+Usage:
+
+   fleetsie_ports FLEET USER@FLEET_HOST
+
+e.g. fleetsie_ports ampi lily@whoflewby.org
+
+where:
+
+- FLEET is the name of the fleet
+- USER is configured for you to use with ssh to the host FLEET_HOST.
+  i.e. ssh USER@FLEET_HOST should log you into the server for FLEET
+
+For each connected device in the given fleet, fleetsie_ports will map
+a local port on your machine to a port on FLEET_HOST, which in turn
+has been mapped back to the ssh port on the device.  This will permit
+you to ssh into that device, if you have credentials for it.
+
+e.g. if device 'ampi-15' is online, and has been allocated port 20015,
+then after running 'fleetsie_ports ampi lily@whoflewby.org', you
+will be able to connect to ampi-15 like so:
+
+  ssh -p 20015 pi@localhost
+
+EOF
+    exit
+}
+
+FLEET="$1"
+if [[ ! "$FLEET" ]]; then
+    usage
+fi
+
+SSH_DEST="$2"
+if [[ ! "$SSH_DEST" ]]; then
+    usage
+fi
+
+if ! ssh $SSH_DEST date > /dev/null 2>&1 ; then
+    cat <<EOF
+To use this script, you need to have ssh keys for $SSH_DEST
+and a block in ~/.ssh/config to use them.
+To get these, contact the administrator for the $FLEET fleet.
+
+EOF
+    exit 1
+fi
+
+DEVTREE=/run/fleetsie/dev/$FLEET
+printf "Mapping local ports to remote ports for connected devices in fleet $FLEET:\n"
+mapfile -t -n 0 HOSTS < <( ssh $SSH_DEST ls -1 $DEVTREE )
+if [[ 0 == ${#HOSTS[*]} ]]; then
+    printf "No hosts are connected to the server.\n"
+    exit 1
+fi
+i=0
+while [[ $i -lt ${#HOSTS[*]} ]]; do
+    read PORT < <( ssh $SSH_DEST readlink $DEVTREE/${HOSTS[$i]} )
+    if [[ $PORT =~ ^[0-9]+$ ]]; then
+	printf "Mapping port $PORT to ${HOSTS[$i]}..."
+	if ssh -f -N -L$PORT:localhost:$PORT $FLEET_SSH 2>&1 > /dev/null; then
+	    printf "  Okay; you can login with something like ssh -p $PORT pi@localhost\n"
+	else
+	    printf "  Failed!\n"
+	fi
+    else
+	printf "Weird, host ${HOSTS[$i]} doesn't seem to have a port mapped on the server.\n"
+    fi
+    i=$(( $i + 1 ))
+done
