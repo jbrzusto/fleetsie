@@ -337,17 +337,21 @@ cd $tmp/fleetsie
 LOGFILE="$PWD/fleetsie_provisioning_log.txt"
 info "Provisioning started on device $HWID from $PART"
 
-# set the password for user 1000
+# set the password(s) for user 1000 and root
 PASSWDFILE=password.txt
 if [[ -f PASSWDFILE ]]; then
-    info "found file $PASSWDFILE; will try change password for user $USER1000"
+    info "found file $PASSWDFILE; will try change password for user $USER1000 and root"
     fix_line_endings $PASSWDFILE
-    read password < $PASSWDFILE
+    { read password && read password_root; } < $PASSWDFILE
+    # default to using the same password for both
+    password_root=${password_root:-$password}
     if [[ "$password" != "change-this-password" ]]; then
 	echo "$USER1000::$password" | chpasswd
 	info "changed password for user $USER1000 to '$password'"
+	echo "root::$password_root" | chpasswd
+	info "changed password for user root to '$password_root'"
     else
-	info "password.txt file has not been editted - the password for user $USER1000 is left unchanged."
+	info "password.txt file has not been editted - the passwords for users root and $USER1000 are left unchanged."
     fi
 fi
 

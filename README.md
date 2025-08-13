@@ -250,9 +250,18 @@ fleetsie_gen creates this layout on the USB drive:
 /fleetsie/password.txt
 ```
 
-  - if this exists, its contents become the password for user 1000
-    (e.g. `pi` on a Raspberry Pi). By default, a stub is created,
-	which needs to be modified.
+  - if this exists, its first line becomes the password for user 1000
+    (e.g. `pi` on a Raspberry Pi) and for the root user. By default, a
+    first line with 'change-this-password' is created, and passwords
+    will only be changed if you modify that line.
+  - to use a different password for the root user, add it as the second line
+    of this file.
+
+Note: the root user password is required for logging into the
+bluetooth configuration menu on each device, and so should be provided
+to whoever is configuring and deploying the devices. The user 1000
+password is required for logging into a deployed device ussing ssh, and
+should be provided to whoever needs to access the device remotely.
 
 ```
 /fleetsie/wifi.txt
