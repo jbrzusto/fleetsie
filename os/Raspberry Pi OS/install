@@ -27,7 +27,7 @@ If you want me to download it, hit Enter.  Otherwise, hit Ctrl-C
 to abort installation.
 EOF
     read ignore
-    curl -o $FIRMWARE_ARCH $FIRMWARE_URL
+    curl -L -o $FIRMWARE_ARCH $FIRMWARE_URL
 fi
 
 unzip -j -o -d $BOOTFS $FIRMWARE_ARCH **/start*.elf **/fixup*.dat
