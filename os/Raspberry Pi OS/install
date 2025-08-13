@@ -33,11 +33,12 @@ fi
 unzip -j -o -d $BOOTFS $FIRMWARE_ARCH "firmware-stable/boot/start*.elf" "firmware-stable/boot/fixup*.dat"
 
 DST=$SYSTEMD/fleetsie-provision.service
-cp ./fleetsie-provision.service $DST
-chown root:root $DST
-ln -sf /etc/systemd/system/fleetsie-provision.service $SYSTEMD/multi-user.target.wants
+sudo cp ./fleetsie-provision.service $DST
+sudo chown root:root $DST
+sudo ln -sf /etc/systemd/system/fleetsie-provision.service $SYSTEMD/multi-user.target.wants
 
-mkdir -p $OPT
+sudo mkdir -p $OPT
+sudo chown 1000:1000 $OPT
 DST=$OPT/fleetsie_provision
 cp ./fleetsie_provision $DST
 chmod oug+x $DST
