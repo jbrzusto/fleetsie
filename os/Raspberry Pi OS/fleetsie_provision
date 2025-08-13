@@ -593,4 +593,5 @@ umount $tmp
 # host ID spelled out clearly, so they can write it on a physical
 # label.
 say "This raspberry pi is now ready to deploy as part of the $FLEET_NAME fleet.  Please label it with this code. `echo $HOSTNAME | sed -E -e 's/(.)/\1, /g;s/-/dash/g'`"
+systemctl disable fleetsie-provision
 done_prov
