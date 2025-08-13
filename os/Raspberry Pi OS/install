@@ -47,6 +47,7 @@ chmod oug+x $DST
 cp $FLEETSIE_DIR/sshd_config-dev $OPT/sshd_config
 cp $FLEETSIE_DIR/ssh_config-dev $OPT/ssh_config
 cp $FLEETSIE_DIR/zabbix_agent2.conf $OPT/
+cp $FLEETSIE_DIR/zabbix_sender.conf $OPT/
 
 # create skeleton dirs and readme files
 mkdir -p $OPT/custom_pre/packages

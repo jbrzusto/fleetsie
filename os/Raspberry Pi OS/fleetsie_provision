@@ -413,15 +413,9 @@ info "downloading zabbix agent"
 wget https://repo.zabbix.com/zabbix/7.4/release/raspbian/pool/main/z/zabbix-release/zabbix-release_latest_7.4+debian12_all.deb
 dpkg -i zabbix-release_latest_7.4+debian12_all.deb
 apt update
-apt install zabbix-agent2 zabbix-sender
+apt install -y zabbix-agent2 zabbix-sender
 cp -f $OPT/zabbix_agent2.conf /etc/zabbix
-cat > /etc/zabbix/zabbix_sender.conf <<EOF
-## Configuration for zabbix_sender via local port mapped to zabbix_proxy at radarcam.ca
-ServerActive=127.0.0.1:10051
-TLSConnect=psk
-TLSPSKIdentity=$FLEETNAME
-TLSPSKFile=/etc/zabbix/psk.txt
-EOF
+cp -f $OPT/zabbix_sender.conf /etc/zabbix
 
 info "looking for fleet ssh keys in fleet.txt"
 
@@ -509,10 +503,11 @@ while true; do
 		    info "Setting server-supplied root password"
 		    echo "root::$ROOTPWD" | chpasswd
 		fi
-		info "Setting zabbix_agent2 configuration"
+		info "Saving credentials for zabbix_agent2 and zabbix_sender"
 		echo "$ZABBIXPSK" > /etc/zabbix/psk.txt
 		chmod og-w /etc/zabbix/psk.txt
-		sed -i -E -e "/^TLSPSKIdentity=/s/=/=$FLEETNAME/"
+		sed -i -E -e "/^TLSPSKIdentity=/s/=.*/=$FLEETNAME/" /etc/zabbix/zabbix_agent2.conf
+		sed -i -E -e "/^TLSPSKIdentity=/s/=.*/=$FLEETNAME/" /etc/zabbix/zabbix_sender.conf
 		info "Saving ssh keys for access to $HOSTNAME and $FLEETHOST"
 		mkdir -p /home/${USER1000}/.ssh
 		echo "$FLEETKNOWNHOST" >> /home/${USER1000}/.ssh/known_hosts
