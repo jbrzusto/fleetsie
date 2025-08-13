@@ -289,6 +289,7 @@ info "enabling ssh service"
 touch /boot/firmware/ssh
 systemctl start sshswitch.service
 
+#
 info "using raspi-config to set the wifi country code to Canada"
 
 # set the wifi country (without this, rfkill blocks use of wifi)
@@ -405,6 +406,23 @@ if ! sqlite3 < /dev/null; then
     fi
 fi
 
+# the following follows instructions from here:
+#  https://www.zabbix.com/download?zabbix=7.4&os_distribution=raspberry_pi_os&os_version=12&components=agent_2&db=&ws=
+#
+info "downloading zabbix agent"
+wget https://repo.zabbix.com/zabbix/7.4/release/raspbian/pool/main/z/zabbix-release/zabbix-release_latest_7.4+debian12_all.deb
+dpkg -i zabbix-release_latest_7.4+debian12_all.deb
+apt update
+apt install zabbix-agent2 zabbix-sender
+cp -f $OPT/zabbix_agent2.conf /etc/zabbix
+cat > /etc/zabbix/zabbix_sender.conf <<EOF
+## Configuration for zabbix_sender via local port mapped to zabbix_proxy at radarcam.ca
+ServerActive=127.0.0.1:10051
+TLSConnect=psk
+TLSPSKIdentity=$FLEETNAME
+TLSPSKFile=/etc/zabbix/psk.txt
+EOF
+
 info "looking for fleet ssh keys in fleet.txt"
 
 ## try get ssh keys for fleet server
@@ -477,7 +495,7 @@ while true; do
                 fatal "server $FLEETHOST reports there are no available devices allocated to the $FLEETNAME fleet.  Contact an administrator to fix this."
                 ;;
 	    Ok)
-		if ! read USERPWD || ! read ROOTPWD || ! read HOSTNAME || ! read FLEETUSER || ! read PORT || ! read SRVPUBKEY || ! read SRVPRIVKEY || ! read DEVAUTHKEY ; then
+		if ! read USERPWD || ! read ROOTPWD || ! read HOSTNAME || ! read FLEETUSER || ! read PORT || ! read SRVPUBKEY || ! read SRVPRIVKEY || ! read DEVAUTHKEY || ! read ZABBIXPSK; then
 		    fatal "server $FLEETHOST gave bad reply: `cat $REPLY_FILE`"
 		fi
 		info "Successfully claimed!"
@@ -491,6 +509,10 @@ while true; do
 		    info "Setting server-supplied root password"
 		    echo "root::$ROOTPWD" | chpasswd
 		fi
+		info "Setting zabbix_agent2 configuration"
+		echo "$ZABBIXPSK" > /etc/zabbix/psk.txt
+		chmod og-w /etc/zabbix/psk.txt
+		sed -i -E -e "/^TLSPSKIdentity=/s/=/=$FLEETNAME/"
 		info "Saving ssh keys for access to $HOSTNAME and $FLEETHOST"
 		mkdir -p /home/${USER1000}/.ssh
 		echo "$FLEETKNOWNHOST" >> /home/${USER1000}/.ssh/known_hosts

@@ -46,6 +46,7 @@ chmod oug+x $DST
 # copy any files needed from the fleetsie repo top-level dir
 cp $FLEETSIE_DIR/sshd_config-dev $OPT/sshd_config
 cp $FLEETSIE_DIR/ssh_config-dev $OPT/ssh_config
+cp $FLEETSIE_DIR/zabbix_agent2.conf $OPT/
 
 # create skeleton dirs and readme files
 mkdir -p $OPT/custom_pre/packages

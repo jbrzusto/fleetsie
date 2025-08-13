@@ -129,5 +129,6 @@ sqlite tunnel_port "select tunnel_port from devices where hwid='$HWID'"
 sqlite srv_public_key "select server_public_key from devices where hwid='$HWID'"
 sqlite srv_private_key "select server_private_key from devices where hwid='$HWID'"
 sqlite dev_auth_key "select device_public_key from devices where hwid='$HWID'"
+sqlite zabbix_psk "select zabbix_psk from zabbix_fleet_psk where fleet='$FLEET'"
 
-printf "Ok\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n" "$user_pwd" "$root_pwd" "$hostname" "$fleetuser" "$tunnel_port" "$srv_public_key" "$srv_private_key" "$dev_auth_key"
+printf "Ok\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n" "$user_pwd" "$root_pwd" "$hostname" "$fleetuser" "$tunnel_port" "$srv_public_key" "$srv_private_key" "$dev_auth_key" "$zabbix_psk"

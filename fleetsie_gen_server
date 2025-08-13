@@ -167,6 +167,17 @@ CREATE UNIQUE INDEX devices_fleet_id_in_fleet ON devices(fleet, id_in_fleet);
     if [[ "$DB" == "$FLEETDB" ]]; then
 	sudo chown $FLEETUSER:$FLEETUSER $DB
 	sudo chmod g+w $DB
+    else
+	# in the main DB, generate a new zabbix Pre-shared Key for the fleet
+	sqlite_do '
+CREATE TABLE IF NOT EXISTS zabbix_fleet_psk (
+     fleet VARCHAR UNIQUE PRIMARY KEY NOT NULL,
+     zabbix_psk VARCHAR NOT NULL
+);
+'
+	# generate a 256-bit zabbix PSK
+	FLEET_ZABBIX_PSK=`od -N 32 -w128 -t x1 -A none /dev/urandom | tr -d ' '`
+	sqlite_do "INSERT INTO zabbix_fleet_psk(fleet, zabbix_psk) VALUES ('$FLEETNAME','$FLEET_ZABBIX_PSK');"
     fi
 done
 
