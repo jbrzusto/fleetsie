@@ -515,7 +515,7 @@ while true; do
 		echo "$FLEETKNOWNHOST" >> /home/${USER1000}/.ssh/known_hosts
 		ln -s "$PORT" /home/${USER1000}/.ssh/fleetsie_tunnel_port
 		echo "$SRVPUBKEY" > /home/${USER1000}/.ssh/fleetsie.pub
-		echo "$SRVPRIVKEY" > /home/${USER1000}/.ssh/fleetsie
+		echo -n "$SRVPRIVKEY" | tr ',' '\n' > /home/${USER1000}/.ssh/fleetsie
 		echo "$FLEETKNOWNHOST" >> /home/${USER1000}/.known_hosts
 		echo "$DEVAUTHKEY" >> /home/{$USER1000}/.ssh/authorized_keys
 		info "Configuring ssh for logging into fleetsie = $FLEETUSER@$FLEETHOST"
