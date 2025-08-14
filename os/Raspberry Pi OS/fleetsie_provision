@@ -448,8 +448,10 @@ fi
 #  https://www.zabbix.com/download?zabbix=7.4&os_distribution=raspberry_pi_os&os_version=12&components=agent_2&db=&ws=
 #
 info "installing zabbix-agent2 and zabbix-sender"
-wget https://repo.zabbix.com/zabbix/7.4/release/raspbian/pool/main/z/zabbix-release/zabbix-release_latest_7.4+debian12_all.deb
-dpkg -i zabbix-release_latest_7.4+debian12_all.deb
+ZBXDEB=zabbix-release_latest_7.4+debian12_all.deb
+wget https://repo.zabbix.com/zabbix/7.4/release/raspbian/pool/main/z/zabbix-release/$ZBXDEB
+dpkg -i $ZBXDEB
+rm $ZBXDEB
 apt update
 apt install -y zabbix-agent2 zabbix-sender
 cp -f zabbix_agent2.conf /etc/zabbix
