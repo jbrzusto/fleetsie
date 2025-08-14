@@ -38,7 +38,7 @@ sudo chown root:root $DST
 sudo ln -sf /etc/systemd/system/fleetsie-provision.service $SYSTEMD/multi-user.target.wants
 
 sudo mkdir -p $OPT
-sudo chown 1000:1000 $OPT
+sudo chown -R 1000:1000 $OPT
 DST=$OPT/fleetsie_provision
 cp ./fleetsie_provision $DST
 chmod oug+x $DST
@@ -81,5 +81,3 @@ cat > $OPT/custom_pre/packages/readme.txt <<EOF
 # any .deb files here are installed using dpkg -i *.deb after
 # running ../setup (if it exists) but before extracting ../overlay.tar.xz (if it exists)
 EOF
-
-sudo chown -R root:root $OPT
