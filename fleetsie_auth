@@ -23,10 +23,10 @@
 #
 # For an invalid OTP or any other case, print the "Error" message and possibly details.
 
-exec {LOG_FD}>>~/fleetsie_auth.log
+LOG_FILE=~/fleetsie_auth.log
 # respond returns a response to the ssh client, copies it to the log, and exits
 function response() {
-    printf "$*" | tee >&$LOG_FD
+    printf "$*" | tee -a $LOG_FILE
     exit
 }
 
@@ -40,7 +40,7 @@ function suggest_trying() {
 }
 
 function report_full() {
-    reponse "Full\n"
+    response "Full\n"
 }
 
 function report_bad() {
