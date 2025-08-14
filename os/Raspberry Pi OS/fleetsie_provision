@@ -435,7 +435,7 @@ fi
 
 info "waiting for system clock to be synchronized to network time"
 
-systemctl restart system-time-wait-sync.service
+systemctl restart systemd-time-wait-sync.service
 
 if ! sqlite3 < /dev/null; then
     info "updating apt and installing sqlite3"
