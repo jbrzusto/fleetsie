@@ -52,5 +52,6 @@ cp $FLEETSIE_DIR/zabbix_sender.conf $OPT/
 cp $FLEETSIE_DIR/ssh_tunnel $OPT/
 cp $FLEETSIE_DIR/ssh-tunnel.service $OPT/
 
-# create skeleton dirs and readme files
-rsync -a $FLEETSIE_DIR/custom_pre_template/ $OPT/custom_pre/
+# create skeleton dirs and readme files, but don't overwrite anything
+# the user has built
+rsync -a --ignore-existing $FLEETSIE_DIR/custom_pre_template/ $OPT/custom_pre/
