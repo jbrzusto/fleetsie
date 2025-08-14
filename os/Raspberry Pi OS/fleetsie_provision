@@ -536,7 +536,8 @@ while true; do
 		fi
 		info "Successfully claimed!"
 		info "Setting hostname to $HOSTNAME"
-		echo "$HOSTNAME" /etc/hostname
+		echo "$HOSTNAME" > /etc/hostname
+		hostname $HOSTNAME
 		if [[ "$USERPWD" ]]; then
 		    info "Setting server-supplied user password"
 		    if ! echo "${USER1000}:$USERPWD" | chpasswd > /tmp/error.txt 2>&1; then
