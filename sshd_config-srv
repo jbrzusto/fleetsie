@@ -53,7 +53,7 @@ Port 22
 #IgnoreRhosts yes
 
 # To disable tunneled clear text passwords, change to no here!
-PasswordAuthentication no
+PasswordAuthentication yes
 #PermitEmptyPasswords no
 
 # Change to yes to enable challenge-response passwords (beware issues with
@@ -118,7 +118,6 @@ Subsystem sftp	/usr/lib/openssh/sftp-server
 #	AllowTcpForwarding no
 #	PermitTTY no
 #	ForceCommand cvs server
-PasswordAuthentication no
 TCPKeepAlive=no
 ClientAliveInterval=60
 ClientAliveCountMax=3
