@@ -599,7 +599,14 @@ info "Provisioning ended at `date`."
 umount $tmp
 # Put the final message on a loop.  The provisioner needs to hear the
 # host ID spelled out clearly, so they can write it on a physical
-# label.
-say "This raspberry pi is now ready to deploy as part of the $FLEET_NAME fleet.  Please label it with this code. `echo $HOSTNAME | sed -E -e 's/(.)/\1, /g;s/-/dash/g'`"
+# label.  We separate the letters by commas and replace "-" with "dash",
+# which seems to work well with pico2wave.
+CLEAR_HOSTNAME=`echo $HOSTNAME | sed -E -e 's/(.)/\1, /g;s/-/dash/g'`
+
+say "Provisioning complete.  \
+You can safely remove the USB disk and reboot without it. \
+This raspberry pi is now ready to deploy as part of the $FLEET_NAME fleet. \
+Please attach a label to it with this code. $CLEAR_HOSTNAME"
+
 systemctl disable fleetsie-provision
 done_prov
