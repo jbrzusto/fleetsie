@@ -186,7 +186,6 @@ function help_pronounce() {
 }
 
 init_leds
-init_speech
 
 # get unique HWID for this device; it is the ethernet adapter MAC address
 HWID=`cat /sys/class/net/eth0/address`
@@ -231,6 +230,9 @@ if [[ -d $PRE_CUSTOM_DIR ]]; then
     else
 	info "No custom_pre/packages folder found."
     fi
+    # initialize the tts engine here, in case it was just installed from the packages dir.
+    init_speech
+
     if [[ -f overlay.tar.xz ]]; then
 	info "Extracting overlay.tar.xz to /..."
 	if tar -C / -xJvf overlay.tar.xz 2>/tmp/overlaylog.txt; then
