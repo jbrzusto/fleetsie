@@ -54,13 +54,13 @@ EOF
 function sqlite() {
     declare -n v=$1
     shift
-    read v < <( sqlite3 $DB "$*" )
+    read v < <( sudo sqlite3 $DB "$*" )
 }
 
 # sqlite_do runs a non-select query on the sqlite database DB and
 # prints any output
 function sqlite_do() {
-    sqlite3 $DB "$*"
+    sudo sqlite3 $DB "$*"
 }
 
 # Set the range of TCP ports that fleetsie can assign for mapping back to device SSH server ports.
