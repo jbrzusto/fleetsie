@@ -1,0 +1,5 @@
+#!/bin/bash
+
+# placeholder script - modify as you wish.  This is run on the device before
+# fleetsie_provision looks for the USB provisioning disk, but after extracting
+# a file called overlay.tar.xz (if it exists in this directory) to "/"

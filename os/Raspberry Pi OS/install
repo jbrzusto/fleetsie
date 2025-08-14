@@ -52,32 +52,4 @@ cp $FLEETSIE_DIR/ssh_tunnel $OPT/
 cp $FLEETSIE_DIR/ssh-tunnel.service $OPT/
 
 # create skeleton dirs and readme files
-mkdir -p $OPT/custom_pre/packages
-cat > $OPT/custom_pre/readme.txt <<EOF
-This folder contains files used early in the device provisioning process.
-
-- setup is run, if it exists
-- any .deb files in ./packages are installed
-- overlay.tar.xz is extracted to /, if it exists
-- cleanup is run, if it exists
-EOF
-cat > $OPT/custom_pre/setup <<EOF
-#!/bin/bash
-
-# placeholder script - modify as you wish.  This is run on the device before
-# fleetsie_provision looks for the USB provisioning disk, before
-# installing any .deb files found in ./packages
-
-EOF
-cat > $OPT/custom_pre/cleanup <<EOF
-#!/bin/bash
-
-# placeholder script - modify as you wish.  This is run on the device before
-# fleetsie_provision looks for the USB provisioning disk, but after extracting
-# a file called overlay.tar.xz (if it exists in this directory) to "/"
-EOF
-
-cat > $OPT/custom_pre/packages/readme.txt <<EOF
-# any .deb files here are installed using dpkg -i *.deb after
-# running ../setup (if it exists) but before extracting ../overlay.tar.xz (if it exists)
-EOF
+rsync -a $FLEETSIE_DIR/custom_pre_template/ $OPT/custom_pre/
