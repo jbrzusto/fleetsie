@@ -82,4 +82,4 @@ cat > $OPT/custom_pre/packages/readme.txt <<EOF
 # running ../setup (if it exists) but before extracting ../overlay.tar.xz (if it exists)
 EOF
 
-chown -R root:root $OPT
+sudo chown -R root:root $OPT
