@@ -392,9 +392,9 @@ if [[ -f $PASSWDFILE ]]; then
     # default to using the same password for both
     password_root=${password_root:-$password}
     if [[ "$password" != "change-this-password" ]]; then
-	echo "$USER1000::$password" | chpasswd
+	echo "$USER1000:$password" | chpasswd
 	info "changed password for user $USER1000 to '$password'"
-	echo "root::$password_root" | chpasswd
+	echo "root:$password_root" | chpasswd
 	info "changed password for user root to '$password_root'"
     else
 	info "password.txt file has not been editted - the passwords for users root and $USER1000 are left unchanged."
@@ -537,7 +537,7 @@ while true; do
 		echo "$HOSTNAME" /etc/hostname
 		if [[ "$USERPWD" ]]; then
 		    info "Setting server-supplied user password"
-		    if ! echo "${USER1000}::$USERPWD" | chpasswd > /tmp/error.txt 2>&1; then
+		    if ! echo "${USER1000}:$USERPWD" | chpasswd > /tmp/error.txt 2>&1; then
 			info "Failed to set user password; error was: `cat /tmp/error.txt`"
 		    else
 			info "Ok"
@@ -545,7 +545,7 @@ while true; do
 		fi
 		if [[ "$ROOTPWD" ]]; then
 		    info "Setting server-supplied root password"
-		    if ! echo "root::$ROOTPWD" | chpasswd >/tmp/error.txt 2>&1; thena
+		    if ! echo "root:$ROOTPWD" | chpasswd >/tmp/error.txt 2>&1; thena
 			info "Failed to set root password; error was: `cat /tmp/error.txt`"
 		    else
 			info "Ok"
