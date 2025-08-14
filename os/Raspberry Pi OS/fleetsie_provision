@@ -304,18 +304,22 @@ while true; do
       set_leds_for 0 0 0.5
 done
 
-mkdir -p /tmp/usb
+# /tmp/usb will be where we mount the fleetsie provisioning disk,
+# unless the system has already done so elsewhere, in which case
+# /tmp/usb will be symlinked to it
 mounted=""
-tmp=`mktemp -d`
+tmp=/tmp/usb
 for PART in `grep -E "sda[0-9]$" /proc/partitions | awk '{print $4}'`; do
     mp=`findmnt -no TARGET $PART`
     if [[ "$mp" ]]; then
-	 if [[ -d "$mp/fleetsie" ]]; then
-	     tmp=mp
-	     break
-	 fi
-	 continue
+	if [[ -d "$mp/fleetsie" ]]; then
+	    ln -f -s $mp $tmp
+	    mounted=1
+	    break
+	fi
+	continue
     fi
+    mkdir $tmp
     if mount /dev/$PART $tmp; then
 	## check for fleetsie directory on this partition
 	if [[ -d $tmp/fleetsie ]]; then
@@ -323,13 +327,14 @@ for PART in `grep -E "sda[0-9]$" /proc/partitions | awk '{print $4}'`; do
 	    break
 	else
 	    umount $tmp
+	    rmdir $tmp
 	fi
     fi
 done
 if [[ ! "$mounted" ]]; then
     fatal
 fi
-info "found fleetsie directory on /dev/$PART"
+info "found fleetsie directory on /dev/$PART; mounted on $tmp"
 info "logging will switch to /fleetsie/fleetsie_provisioning_log.txt on the USB disk"
 
 cd $tmp/fleetsie
