@@ -294,7 +294,7 @@ info "using raspi-config to set the wifi country code to Canada"
 # set the wifi country (without this, rfkill blocks use of wifi)
 raspi-config nonint do_wifi_country CA
 
-info "waiting for a USB drive to be found or plugged in"
+info "waiting for a USB drive with /fleetsie folder to be found or plugged in"
 # wait for a USB drive
 while true; do
       if grep -E "sda[0-9]?$" /proc/partitions > /dev/null 2>&1; then
