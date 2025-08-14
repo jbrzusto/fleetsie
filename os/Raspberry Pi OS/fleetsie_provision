@@ -304,7 +304,7 @@ for app in ssh sshd; do
     fi
 done
 
-# install and enable ssh-tunnel.service
+# install ssh-tunnel.service
 src=/opt/fleetsie/ssh-tunnel.service
 dst=/etc/systemd/system/ssh-tunnel.service
 if [[ -f "$src" ]]; then
