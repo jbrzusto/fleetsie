@@ -26,7 +26,7 @@
 exec {LOG_FD}>>~/fleetsie_auth.log
 # respond returns a response to the ssh client, copies it to the log, and exits
 function response() {
-    printf "$*" | (echo -n "`date -Isecond`: " && cat) | tee -a >&$LOG_FD
+    printf "$*" | tee >&$LOG_FD
     exit
 }
 
