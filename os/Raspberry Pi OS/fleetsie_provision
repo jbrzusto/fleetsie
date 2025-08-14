@@ -337,6 +337,9 @@ fi
 info "found fleetsie directory on /dev/$PART; mounted on $tmp"
 info "logging will switch to /fleetsie/fleetsie_provisioning_log.txt on the USB disk"
 
+# remaining operations happen from this directory.  If a new operation
+# is added that needs to 'cd', it should instead do 'pushd' and then
+# 'popd' when done.
 cd $tmp/fleetsie
 
 # switch logging target; this makes it easier to check
