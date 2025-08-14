@@ -114,10 +114,10 @@ fi
 # so this is atomic and at most one process can succeed in claiming the
 # device record with the matching OTP.
 CLIENT_IP=${SSH_CLIENT/ */}
-sqlite resp "update devices set hwid='$HWID', ts_registered=strftime('%s',datetime()), ip_provisioned_from='$CLIENT_IP' where otp='$OTP' and hwid is null"
+sqlite resp "update devices set hwid='"$HWID"', ts_registered=strftime('%s',datetime()), ip_provisioned_from='"$CLIENT_IP"' where otp='"$OTP"' and hwid is null;"
 
 # did we succeed in registering the device with this OTP?
-sqlite resp "select hwid from devices where otp='$OTP'"
+sqlite resp "select hwid from devices where otp='"$OTP"'"
 if [[ "$resp" != "$HWID" ]]; then
     # someone else got to the device first, do a query to suggest the index of the OTP to try next
     sqlite resp "select min(id_in_fleet) from devices where hwid is null"
