@@ -234,7 +234,7 @@ while [[ $NUM -gt 0 ]]; do
     sudo chown $FLEETUSER:$FLEETUSER $srv_ssh_key_file $srv_ssh_key_file.pub
     SRVPRIVKEY=`sudo cat $srv_ssh_key_file`
     SRVPUBKEY=`sudo cat ${srv_ssh_key_file}.pub`
-    AUTHKEYPREFIX="command=\"/usr/bin/setsid -w /home/fleetsie/fleetsie_login\",environment=\"FLEETSIE_FLEET=$FLEETNAME\",environment=\"FLEETSIE_HOST=$HOSTNAME\",environment=\"FLEETSIE_PORT=$next_port\",pty,permitlisten=\"localhost:$next_port\",permitopen=\"localhost:10051\""
+    AUTHKEYPREFIX="command=\"/usr/bin/setsid -w /home/fleetsie/fleetsie_login\",environment=\"FLEETSIE_FLEET=$FLEETNAME\",environment=\"FLEETSIE_HOST=$HOSTNAME\",environment=\"FLEETSIE_PORT=$next_port\",restrict,port-forwarding,pty,permitlisten=\"localhost:$next_port\",permitopen=\"localhost:10051\""
     printf "%s %s\n" "$AUTHKEYPREFIX" "$SRVPUBKEY" | sudo tee -a $FLEETDIR/.ssh/authorized_keys > /dev/null
     # generate keys for logging into the device from the server
     dev_ssh_key_file=$FLEETDIR/.ssh/id_ed25519_${HOSTNAME}_dev
