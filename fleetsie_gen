@@ -64,6 +64,17 @@ fleetsie_gen creates this layout on the USB drive:
   /fleetsie
    - top-level folder
 
+  /fleetsie/password.txt
+   - file containing one or two passwords, for user 1000 ('pi') and
+     user root.  If only one is supplied, it is used for both.
+     These passwords will only be in effect until the device is
+     successfully registered with the server, at which point it
+     will set new passwords supplied by the server.  If
+     provisioning fails, the password(s) in this file can be
+     used to login to the pi on the console or via ssh.
+     (Note: the password you supply when using rpi-imager is
+     extremely short lived, unless this file is missing.)
+
   /fleetsie/wifi.txt
 
    - file containing essids and passwords for wifi networks, one per
@@ -84,13 +95,6 @@ fleetsie_gen creates this layout on the USB drive:
    - ssh keys used to login to the fleet server at provisioning time; on the server,
      ssh is configured so that logging in with these keys runs the server-side
      provisioning code.  No other use for these keys is permitted by the server.
-
-  /fleetsie/ssh-tunnel.service
-  /fleetsie/ssh_tunnel.sh
-
-   - systemd service and script it runs to maintain a ssh connection to the fleet server,
-     with a port mapped from the server back to the local ssh server; also maintains
-     a local port which maps to the zabbix data port on the fleet server.
 
   /fleetsie/custom
 
@@ -202,9 +206,6 @@ if [[ "$USB_PARTITION" != "" ]]; then
     # fleet credentials, for sending OTP to obtain device credentials
     FLEET_CREDS="$FLEETSUBDIR/id_ed25519_provision_$FLEET_NAME"
     scp fleetsie@$FLEET_HOST:$FLEET_CREDS* "$PROVDIR"
-
-    # copy ssh tunnel service and script
-    cp $FLEETSIE_DIR/ssh-tunnel.service $FLEETSIE_DIR/ssh_tunnel.sh "$PROVDIR"
 
     # generate a .zip file with the contents of the USB partition, so others
     # can create their own disk
