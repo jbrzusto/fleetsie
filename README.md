@@ -368,7 +368,7 @@ This script will set up `SERVER` via ssh like so:
 CREATE TABLE devices (
      id INTEGER UNIQUE PRIMARY KEY NOT NULL,  -- unique ID for device, across all fleets
      fleet VARCHAR NOT NULL,                  -- name of fleet device belongs to
-	 id_in_fleet INTEGER NOT NULL,            -- unique ID for device within fleet
+     id_in_fleet INTEGER NOT NULL,            -- unique ID for device within fleet
      fleetuser VARCHAR NOT NULL,              -- name of user device uses for ssh to fleet server; typically, fleetsie_FLEET
      hostname VARCHAR NOT NULL,               -- hostname for device; typically FLEET-ID_IN_FLEET
      hwid VARCHAR,                            -- hardware ID of device; NULL means no device registered to this record yet
@@ -376,15 +376,17 @@ CREATE TABLE devices (
      ts_generated DOUBLE NOT NULL,            -- unix timestamp for when this device record was generated
      ts_registered DOUBLE,                    -- unix timestamp for when this device was registered; NULL means not registered yet
      tunnel_port INTEGER NOT NULL,            -- TCP port mapped on server back to device SSH server port
+     user_pwd VARCHAR,                        -- plaintext password for user 1000 on device (yes, should be stored hashed, not plaintext!)
+     root_pwd VARCHAR,                        -- plaintext password for root user on device (yes, should be stored hashed, not plaintext!)
      device_public_key VARCHAR NOT NULL,      -- public key which can be used to login as user 1000 on device
      device_private_key VARCHAR NOT NULL,     -- private key which can be used to login as user 1000 on device
      server_public_key VARCHAR NOT NULL,      -- public key which device will use to ssh into fleet server
      server_private_key VARCHAR NOT NULL,     -- private key which device will use to ssh into fleet server
-     ip_provisioned_from VARCHAR NOT NULL     -- IP address from which request to provision this device originated
+     ip_provisioned_from VARCHAR              -- IP address from which request to provision this device originated
  );
- CREATE UNIQUE INDEX ON devices(hwid);
- CREATE UNIQUE INDEX ON devices(fleet, otp, hwid);
- CREATE UNIQUE INDEX ON devices(fleet, id_in_fleet);
+CREATE UNIQUE INDEX devices_hwid ON devices(hwid);
+CREATE UNIQUE INDEX devices_fleet_otp_hwid ON devices(fleet, otp, hwid);
+CREATE UNIQUE INDEX devices_fleet_id_in_fleet ON devices(fleet, id_in_fleet);
 ```
 
 This table, initially empty, holds pre-allocated device records for one or more
