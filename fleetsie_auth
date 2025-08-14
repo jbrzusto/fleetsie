@@ -99,13 +99,13 @@ sanitize OTP
 # check whether this is a valid OTP; early, so that we don't
 # leak information to a totally unauthorized user.
 sqlite resp "select count(*) from devices where otp='$OTP'"
-if [[ "$resp" == "0" ]]; then
+if [[ "$resp" -eq 0 ]]; then
     report_bad
 fi
 
 # check whether this hwid already registered
 sqlite resp "select count(*) from devices where hwid='$HWID'"
-if [[ "$resp" != "0" ]]; then
+if [[ "$resp" -ne 0 ]]; then
     die "hardware id $HWID already registered"
 fi
 
