@@ -299,7 +299,7 @@ fleetsie_gen creates this layout on the USB drive:
 
 ```
 /fleetsie/ssh-tunnel.service
-/fleetsie/ssh_tunnel.sh
+/fleetsie/ssh_tunnel
 ```
 
 - systemd service and the script it runs to maintain a ssh connection

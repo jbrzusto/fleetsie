@@ -4,7 +4,7 @@ Description=tunnel to fleetsie host
 [Service]
 User=1000
 Group=1000
-ExecStart=/opt/fleetsie/ssh_tunnel.sh
+ExecStart=/opt/fleetsie/ssh_tunnel
 Restart=always
 RestartSec=10
 StandardOutput=journal
