@@ -23,25 +23,27 @@
 #
 # For an invalid OTP or any other case, print the "Error" message and possibly details.
 
+# respond returns a response to the ssh client, copies it to the log, and exits
+function response() {
+    printf "$*" | (echo -n "`date -Isecond`: " && cat) | tee ~/fleetsie_auth.log
+    exit
+}
+
 # die returns an error to the ssh client, and exits
 function die() {
-    printf "Error\n$*\n"
-    exit
+    response "Error\n$*\n"
 }
 
 function suggest_trying() {
-    printf "Try\n$1\n"
-    exit
+    response "Try\n$1\n"
 }
 
 function report_full() {
-    printf "Full\n"
-    exit
+    reponse "Full\n"
 }
 
 function report_bad() {
-    printf "Bad\n"
-    exit
+    response "Bad\n"
 }
 
 # sanitize removes any characters outside of [_:] and [:alnum:] from the named env var
@@ -66,15 +68,14 @@ DB=~fleetsie/fleets/${FLEET}/fleet.sqlite
 PDB=~fleetsie/fleets/${FLEET}/provisioning.sqlite
 
 # sqlite runs a set of queries through the devices sqlite database.
-# The first line output is saved in the variable whose name
-# is provided as $1; remaining parameters are the db queries.
-# We use pragma busy_timeout to allow for retries of a locked
-# database.  This prints the timeout value, so we read and skip
-# that.
+# The output is saved in the variable whose name is provided as $1;
+# remaining parameters are the db queries.  We use pragma busy_timeout
+# to allow for retries of a locked database, and this prints the
+# timeout value, so we skip that by piping to tail.
 function sqlite() {
     declare -n v=$1
     shift
-    v=`sqlite3 $DB "pragma busy_timeout=1000;$*" | tail +2l`
+    v=`sqlite3 $DB "pragma busy_timeout=3000;$*" | tail +2l`
 }
 
 read HWID
