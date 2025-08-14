@@ -23,9 +23,10 @@
 #
 # For an invalid OTP or any other case, print the "Error" message and possibly details.
 
+exec {LOG_FD}>>~/fleetsie_auth.log
 # respond returns a response to the ssh client, copies it to the log, and exits
 function response() {
-    printf "$*" | (echo -n "`date -Isecond`: " && cat) | tee ~/fleetsie_auth.log
+    printf "$*" | (echo -n "`date -Isecond`: " && cat) | tee -a >&$LOG_FD
     exit
 }
 
@@ -44,6 +45,11 @@ function report_full() {
 
 function report_bad() {
     response "Bad\n"
+}
+
+# log writes info to the log file
+function log() {
+    echo "$*" >&$LOG_FD
 }
 
 # sanitize removes any characters outside of [_:] and [:alnum:] from the named env var
@@ -80,12 +86,14 @@ function sqlite() {
 
 read HWID
 sanitize HWID
+log "Got HWID=$HWID"
 if [[ ! $HWID =~ ^([[:xdigit:]]{2}:){5}[[:xdigit:]]{2}$ ]]; then
     # doesn't look like the typical MAC address
     die "invalid hardware ID"
 fi
 
 read OTP
+log "Got OTP=$OTP"
 sanitize OTP
 
 # check whether this is a valid OTP; early, so that we don't
