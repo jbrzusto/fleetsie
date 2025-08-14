@@ -548,7 +548,7 @@ while true; do
 		fi
 		if [[ "$ROOTPWD" ]]; then
 		    info "Setting server-supplied root password"
-		    if ! echo "root:$ROOTPWD" | chpasswd >/tmp/error.txt 2>&1; thena
+		    if ! echo "root:$ROOTPWD" | chpasswd >/tmp/error.txt 2>&1; then
 			info "Failed to set root password; error was: `cat /tmp/error.txt`"
 		    else
 			info "Ok"
