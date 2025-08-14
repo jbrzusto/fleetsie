@@ -595,8 +595,11 @@ if [[ -d custom_post ]]; then
 else
     info "No custom_post directory on USB disk."
 fi
+if [[ ! -L $tmp ]]; then
+    umount $tmp
+fi
 info "Provisioning ended at `date`."
-umount $tmp
+
 # Put the final message on a loop.  The provisioner needs to hear the
 # host ID spelled out clearly, so they can write it on a physical
 # label.  We separate the letters by commas and replace "-" with "dash",
