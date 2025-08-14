@@ -180,12 +180,11 @@ CREATE TABLE IF NOT EXISTS zabbix_fleet_psk (
 	# generate a 256-bit zabbix PSK
 	FLEET_ZABBIX_PSK=`od -N 32 -w128 -t x1 -A none /dev/urandom | tr -d ' '`
 	sqlite_do "INSERT INTO zabbix_fleet_psk(fleet, zabbix_psk) VALUES ('$FLEETNAME','$FLEET_ZABBIX_PSK');"
-
 	FLEET_PSK_FILE=/etc/zabbix/psk_${FLEETNAME}.txt
 	echo "$FLEET_ZABBIX_PSK" | sudo tee $FLEET_PSK_FILE > /dev/null
-	sudo cp /etc/zabbix/zabbix_sender.conf /etc/zabbix/zabbix_sender_${FLEETNAME}.conf
-	sudo sed -i -e "/^TLSPSKIdentity=/s/=.*/$FLEET_NAME"
-	sudo sed -i -e "/^TLSPSKFile=/s/=.*/$FLEET_PSK_FILE"
+	ZBX_SND_CNF=/etc/zabbix/zabbix_sender_${FLEETNAME}.conf
+	cat /etc/zabbix/zabbix_sender.conf | sed -e "/^TLSPSKIdentity=/s/=.*/=${FLEETNAME}/;/^TLSPSKFile=/s/=.*/=${FLEET_PSK_FILE//\//\\\/}/" | sudo tee $ZBX_SND_CNF > /dev/null
+	sudo chown fleetsie:fleetsie $DB
     fi
 done
 
