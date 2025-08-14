@@ -277,7 +277,7 @@ if [[ -d $PRE_CUSTOM_DIR ]]; then
     fi
     if [[ -f cleanup ]]; then
 	info "Running customize/cleanup..."
-	if . ./setup 2>/tmp/cleanuplog.txt; then
+	if . ./cleanup 2>/tmp/cleanuplog.txt; then
 	    info "Cleanup completed successfully."
 	else
 	    info "error while running cleanup: `cat /tmp/cleanuplog.txt`"
@@ -627,7 +627,7 @@ if [[ -d custom_post ]]; then
     fi
     if [[ -f cleanup ]]; then
 	info "Running customize/cleanup..."
-	if . ./setup 2>/tmp/cleanuplog.txt; then
+	if . ./cleanup 2>/tmp/cleanuplog.txt; then
 	    info "Cleanup completed successfully."
 	else
 	    info "error while running cleanup: `cat /tmp/cleanuplog.txt`"
