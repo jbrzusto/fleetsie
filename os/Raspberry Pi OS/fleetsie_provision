@@ -584,7 +584,7 @@ EOF
 		sqlite3 $DB "delete from devices where otp='$OTP'"
 		break
                 ;;
-            *) fatal "server $FLEETHOST replied to device claim request with unknown reponse: $rv"
+            *) fatal "server $FLEETHOST replied to device claim request with unknown response: $rv"
                 ;;
 	esac
     } < $REPLY_FILE
