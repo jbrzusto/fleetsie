@@ -440,7 +440,7 @@ systemctl restart systemd-time-wait-sync.service
 if ! sqlite3 < /dev/null; then
     info "updating package lists and installing sqlite3"
     if ! apt update || ! apt install sqlite3 ; then
-	fatalf "unable to install sqlite3"
+	fatal "unable to install sqlite3"
     fi
 fi
 
