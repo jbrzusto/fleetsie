@@ -91,6 +91,11 @@ fi
 FLEETUSER="fleetsie_$FLEETNAME"
 FLEETDIR=/home/$FLEETUSER
 FLEETSUBDIR=/home/fleetsie/fleets/$FLEETNAME
+if [[ ! -d $FLEETSUBDIR ]]; then
+    sudo mkdir -p $FLEETSUBDIR
+    sudo chmod g+w $FLEETSUBDIR
+    sudo chown $FLEETUSER:$FLEETUSER $FLEETSUBDIR
+fi
 if ! id -u $FLEETUSER 2> /dev/null ; then
     printf "Creating user $FLEETUSER...\n"
     sudo adduser --disabled-password --gecos '""' $FLEETUSER
@@ -98,10 +103,7 @@ if ! id -u $FLEETUSER 2> /dev/null ; then
     sudo usermod -a -G $FLEETUSER fleetsie
     sudo mkdir $FLEETDIR/.ssh
     sudo touch $FLEETDIR/.ssh/authorized_keys
-    sudo mkdir -p $FLEETSUBDIR
-    sudo chmod g+w $FLEETSUBDIR
     sudo chown fleetsie:fleetsie /home/fleetsie/fleets
-    sudo chown $FLEETUSER:$FLEETUSER $FLEETSUBDIR
     # generate fleet credentials used by devices when first connecting
     # to the server.  These keys are provided on the USB provisioning
     # disk, and can only be used to run fleetsie_auth, which provides
