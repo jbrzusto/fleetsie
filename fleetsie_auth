@@ -142,4 +142,4 @@ sqlite zabbix_psk "select zabbix_psk from zabbix_fleet_psk where fleet='$FLEET'"
 
 # replace EOL with , in private key file
 srv_private_key_compact=`echo "$srv_private_key" | tr '\n' ','`
-printf "Ok\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n" "$user_pwd" "$root_pwd" "$hostname" "$fleetuser" "$tunnel_port" "$srv_public_key" "$srv_private_key_compact" "$dev_auth_key" "$zabbix_psk"
+printf "Ok\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n" "$user_pwd" "$root_pwd" "$hostname" "$fleetuser" "$tunnel_port" "$srv_public_key" "$srv_private_key_compact" "$dev_auth_key" "$zabbix_psk"
