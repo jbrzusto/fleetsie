@@ -93,8 +93,8 @@ if [[ ! $HWID =~ ^([[:xdigit:]]{2}:){5}[[:xdigit:]]{2}$ ]]; then
 fi
 
 read OTP
-log "Got OTP=$OTP"
 sanitize OTP
+log "Got OTP=$OTP"
 
 # check whether this is a valid OTP; early, so that we don't
 # leak information to a totally unauthorized user.
