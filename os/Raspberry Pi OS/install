@@ -37,9 +37,6 @@ sudo cp ./fleetsie-provision.service $DST
 sudo chown root:root $DST
 sudo ln -sf /etc/systemd/system/fleetsie-provision.service $SYSTEMD/multi-user.target.wants
 
-# disable the userconfig service
-sudo rm $SYSTEMD/multi-user.target.wants/userconfig.service
-
 sudo mkdir -p $OPT
 sudo chown 1000:1000 $OPT
 DST=$OPT/fleetsie_provision
