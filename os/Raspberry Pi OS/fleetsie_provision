@@ -19,10 +19,7 @@ function fatal() {
 	say "$* . Provisioning ended at `date`"
 	sync
     fi
-    while true; do
-	set_leds_for 1 0 1
-	set_leds_for 0 0 1
-    done
+    sos_leds
 }
 
 # on a warning, write any supplied arguments to $LOGFILE, if defined
@@ -86,14 +83,21 @@ RED_CTRL=/sys/class/leds/PWR/trigger
 GRN_LED=/sys/class/leds/ACT/brightness
 GRN_CTRL=/sys/class/leds/ACT/trigger
 
-# init_leds should be called once before calling set_leds_forfor
-# It tries to disable other LED uses, and sets up FDs
-# for control registers and brightness.
+# init_leds should be called once before calling any other LED
+# functions It sets up file descriptors so we don't keep opening the
+# LED devices.
 function init_leds() {
     exec {RED_LED_FD}>$RED_LED
     exec {GRN_LED_FD}>$GRN_LED
     exec {RED_LED_CTRL_FD}>$RED_CTRL
     exec {GRN_LED_CTRL_FD}>$GRN_CTRL
+}
+
+# claim_leds tries to disable other processes from controlling the
+# LEDs, so that our settings are definitive.  This is only used at the
+# end of provisioning, to leave the Pi with LEDs in a predictable
+# blinking pattern informing the user of success or failure
+function claim_leds() {
     printf "none\n" >&$GRN_LED_CTRL_FD
     printf "none\n" >&$RED_LED_CTRL_FD
 }
@@ -106,13 +110,41 @@ function set_leds_for() {
     sleep $3
 }
 
-# when finished provisioning, blink R+G leds
+# blink_leds_for R G TIMEON TIMEOFF sets red LED to R (0 or 1),
+# green LED to G (0 or 1) and sleeps for TIMEON,
+# then sets both LEDS to 0 and sleeps for TIMEOFF
+function blink_leds_for() {
+    set_leds_for $1 $2 $3
+    set_leds_for 0 0 $4
+}
+
+# when finished provisioning, blink R+G LEDs
 # in tandem
 function done_prov() {
+    claim_leds
     while true; do
-	set_leds_for 1 1 .3
-	set_leds_for 0 0 .3
-	sleep 1
+	blink_leds_for 1 1 0.3 0.3
+    done
+}
+
+# blink red LED in morse code 'dot'
+function _dot () {
+    blink_leds_for 1 0 0.16 0.16
+}
+
+# blink red LED in morse code 'dash'
+function _dash () {
+    blink_leds_for 1 0 0.5 0.5
+}
+
+# blink an SOS pattern in red
+function sos_leds () {
+    claim_leds
+    while true; do
+	_dot;  _dot;  _dot
+	_dash; _dash; _dash
+	_dot;  _dot;  _dot
+	sleep 1.5
     done
 }
 
