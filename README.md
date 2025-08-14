@@ -439,7 +439,7 @@ It manages three versions of fleet database:
   `/home/fleetsie/fleets/FLEET/provisioning.sqlite` on the fleet server
 
 whenever `fleetsie_gen_srv` is run for fleet FLEET, it does this:
-- if the One-Fleet database for FLEET exists, any new registrations
+- if the Fleet database for FLEET exists, any new registrations
   are copied from it to the Main database.
 
 - if requested, new devices are allocated in the Main database
