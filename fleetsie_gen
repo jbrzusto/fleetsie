@@ -96,11 +96,16 @@ fleetsie_gen creates this layout on the USB drive:
      ssh is configured so that logging in with these keys runs the server-side
      provisioning code.  No other use for these keys is permitted by the server.
 
-  /fleetsie/custom
+  /fleetsie/custom_post
 
-   - the custom folder is reserved for your customizations.  Three filenames there
+   - this directory is reserved for your customizations.  Three filenames there
      have special meaning:  'setup', 'overlay.tar.xz' and 'cleanup'.
-     fleetsie_provision ignores all other files and subdirectories in /fleetsie/custom.
+     fleetsie_provision ignores all other files and subdirectories in /fleetsie/custom_post.
+     - 'setup', if present, is run after all other provisioning has happened, so it can assume the
+     device has a network connection and has been registered to the fleet.  It is run from
+     within the '/fleetsie/custom_post' directory
+     - 'overlay.tar.xz' is then extracted to the root directory of the device
+     - 'cleanup', if present, is run as the last step
 
 EOF
     exit 1

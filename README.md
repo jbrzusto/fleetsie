@@ -49,6 +49,11 @@ server-side inventory for a fleet
 **`fleetsie_gen_server`**: script run on the fleet server by
 `fleetsie_gen`
 
+**`fleetsie_login`**: script run on the server when a provisioned
+fleet device connects via ssh.  Maintains a hierarchy of connected
+devices in `/run/fleetsie/dev/FLEET/` on the server, and sends
+a connect/disconnect event to the zabbix server, so that the device's
+connection status is visible on the fleet dashboard.
 
 ## `fleetsie_mod` - Manage Creation of a Modified OS Image
 
@@ -308,11 +313,15 @@ fleetsie_gen creates this layout on the USB drive:
   zabbix data port on the fleet server.
 
 ```
-/fleetsie/custom
+/fleetsie/custom_post
 ```
 
 - this folder is for any other files or directories you want to provide
-to the provisioning process.  There are 3 files with special meanings
+to the provisioning process.  These files are used at the last stage of
+provisioning, after a network connection has been obtained and the
+device has been registered to the fleet.
+
+There are 3 files with special meanings
 for `fleetsie_provision`:
 
 ```
@@ -339,7 +348,7 @@ for `fleetsie_provision`:
   and extraction of `overlay.tar.xz`
 
 `fleetsie_provision` ignores all other files and subdirectories
-in the `fleetsie/custom` directory, so you can populated it with whatever
+in the `fleetsie/custom_post` directory, so you can populated it with whatever
 is needed by your `setup` and `cleanup` scripts.
 
 EOF
