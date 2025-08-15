@@ -3,4 +3,9 @@
 # placeholder script - modify as you wish.  This is run on the device before
 # fleetsie_provision looks for the USB provisioning disk, before
 # installing any .deb files found in ./packages
-
+#
+# This script is sourced by fleetsie_provision (using '.'),
+# so you can use functions defined there.  In particular,
+#
+# info ... - add a message to the log, and if possible, speak it through the audio jack
+# fatal ... - add a message to the log, speak it if possible, and end provisioning

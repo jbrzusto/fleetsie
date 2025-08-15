@@ -590,9 +590,10 @@ EOF
     } < $REPLY_FILE
 done
 
-if [[ -d custom_post ]]; then
-    pushd custom_post
-    info "Starting custom post-provisioning; any subsequent errors are likely in custom code, and not in fleetsie."
+SDCARD_POST_PROV_DIR=/opt/fleetsie/custom_post
+if [[ -d $SDCARD_POST_PROV_DIR ]]; then
+    pushd $SDCARD_POST_PROV_DIR
+    info "Starting custom post-provisioning from ${SDCARD_POST_PROV_DIR}.  Subsequent errors are likely in custom code, and not in fleetsie."
     if [[ -f setup ]]; then
 	info "Running customize/setup..."
 	if . ./setup 2>/tmp/setuplog.txt; then
@@ -635,7 +636,59 @@ if [[ -d custom_post ]]; then
     else
 	info "No custom cleanup script found."
     fi
-    info "Ending custom post-provisioning."
+    info "Ending custom post-provisioning from SD card."
+    popd
+else
+    info "No custom_post directory on SD card in /opt/fleetsie"
+fi
+
+USB_POST_PROV_DIR=$tmp/custom_post
+if [[ -d $USB_POST_PROV_DIR ]]; then
+    pushd $USB_POST_PROV_DIR
+    info "Starting custom post-provisioning from ${USB_POST_PROV_DIR}. Any subsequent errors are likely in custom code, and not in fleetsie."
+    if [[ -f setup ]]; then
+	info "Running customize/setup..."
+	if . ./setup 2>/tmp/setuplog.txt; then
+	    info "Setup completed successfully."
+	else
+	    info "error while running setup: `cat /tmp/setuplog.txt`"
+	fi
+    else
+	info "No custom setup script found."
+    fi
+    if [[ -d packages ]]; then
+	pushd packages
+	info "Installing custom_post packages:\n`ls -1`\n"
+	if dpkg -i ./*deb 2>/tmp/packagelog.txt; then
+	    info "Successful."
+	else
+	    info "failed to install packages: `cat /tmp/packagelog.txt`"
+	fi
+	popd
+    else
+	info "No custom_pre/packages folder found."
+    fi
+    if [[ -f overlay.tar.xz ]]; then
+	info "Extracting overlay.tar.xz to /..."
+	if tar -C / -xJvf overlay.tar.xz 2>/tmp/overlaylog.txt; then
+	    info "Overlay extraction completed successfully."
+	else
+	    info "error while extracting overlay: `cat /tmp/overlaylog.txt`"
+	fi
+    else
+	info "No custom overlay.tar.xz archive found."
+    fi
+    if [[ -f cleanup ]]; then
+	info "Running customize/cleanup..."
+	if . ./cleanup 2>/tmp/cleanuplog.txt; then
+	    info "Cleanup completed successfully."
+	else
+	    info "error while running cleanup: `cat /tmp/cleanuplog.txt`"
+	fi
+    else
+	info "No custom cleanup script found."
+    fi
+    info "Ending custom post-provisioning from USB disk."
     popd
 else
     info "No custom_post directory on USB disk."
