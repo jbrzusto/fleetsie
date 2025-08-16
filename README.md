@@ -1,6 +1,24 @@
 # fleetsie
 
-Simple tool to provision and manage a fleet of linux-based iot devices.
+Simple shell tools to provision and manage a fleet of linux-based iot devices.
+
+## WTAF??  (why think about fleetsie)
+
+- headless provisioning of headless devices by untrained personnel
+- OS image has no secrets - distribute / burn freely
+- fleet admin **doesn't** handle SD cards, USB drives, or device
+  hardware
+- admin decides who gets to provision how many devices
+- admin distributes batches of **fleet permits** to provisioners
+- each permit allows one device to join fleet
+- unused permits can be revoked
+- provisioner puts SD card (with OS image) and USB disk (with batch of
+  fleet permits) into device and powers up
+- when provisioning completes, SD card stays in device and USB disk is
+  removed and used to provision more devices
+- if necessary, a provisioning technician can edit plain-text WiFi
+credentials file on USB disk, before supplying it to untrained
+provisioners
 
 ![alt text](https://github.com/jbrzusto/fleetsie/blob/main/fleetsie_in_a_picture.jpg?raw=true)
 
