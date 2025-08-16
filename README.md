@@ -25,8 +25,8 @@ provisioners
 1. Admin uses `fleetsie_mod` to convert a standard OS disk image file to
    a modified OS disk image file.  So far, only Raspberry Pi OS images
    are supported.
-2. Admin uses the `fleetsie_gen` script to create USB provisioning
-   disk(s) and allocate devices on the server.
+2. Admin uses the `fleetsie_gen` script to create the .zip archive for USB provisioning
+   disks, and allocate devices on the server.
 3. Technician writes modified OS image to SD cards, e.g. with
    `rpi-imager`
 4. Technician installs these SD cards into the devices.
