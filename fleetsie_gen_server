@@ -94,7 +94,7 @@ FLEETSUBDIR=/home/fleetsie/fleets/$FLEETNAME
 if [[ ! -d $FLEETSUBDIR ]]; then
     sudo mkdir -p $FLEETSUBDIR
     sudo chmod g+w $FLEETSUBDIR
-    sudo chown $FLEETUSER:$FLEETUSER $FLEETSUBDIR
+    sudo chown fleetsie:$FLEETUSER $FLEETSUBDIR
 fi
 if ! id -u $FLEETUSER 2> /dev/null ; then
     printf "Creating user $FLEETUSER...\n"
@@ -167,7 +167,7 @@ CREATE UNIQUE INDEX devices_fleet_otp_hwid ON devices(fleet, otp, hwid);
 CREATE UNIQUE INDEX devices_fleet_id_in_fleet ON devices(fleet, id_in_fleet);
 '
     if [[ "$DB" == "$FLEETDB" ]]; then
-	sudo chown $FLEETUSER:$FLEETUSER $DB
+	sudo chown fleetsie:$FLEETUSER $DB
 	sudo chmod g+w $DB
     else
 	# in the main DB, generate a new zabbix Pre-shared Key for the fleet
