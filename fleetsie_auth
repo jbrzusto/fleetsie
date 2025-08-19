@@ -49,7 +49,7 @@ function report_bad() {
 
 # log writes info to the log file
 function log() {
-    echo "$*" >> $LOG_FILE
+    printf "%s\n" "$*" >> $LOG_FILE
 }
 
 # sanitize removes any characters outside of [_:] and [:alnum:] from the named env var
@@ -73,17 +73,34 @@ DB=~fleetsie/fleets/${FLEET}/fleet.sqlite
 # with records of unregistered devices, and with only the id_in_fleet and otp columns
 PDB=~fleetsie/fleets/${FLEET}/provisioning.sqlite
 
-# sqlite runs a set of queries through the devices sqlite database.
-# The output is saved in the variable whose name is provided as $1;
-# remaining parameters are the db queries.  We use pragma busy_timeout
-# to allow for retries of a locked database, and this prints the
-# timeout value, so we skip that by piping to tail.
-function sqlite() {
-    declare -n v=$1
-    shift
-    v=`sqlite3 $DB "pragma busy_timeout=3000;$*" | tail +2l`
+# run sqlite in a coprocess; return values left justified in 1 column
+coproc SQL { sqlite3 -column $DB 2>&1; }
+FROMSQL=${SQL[0]}
+TOSQL=${SQL[1]}
+sleep 0.1
+printf ".prompt \"\" \"\"\n" >&$TOSQL
+printf ".timeout 3000\n" >&$TOSQL
+read -t 3 ignore <&$FROMSQL
+read -t 3 ignore <&$FROMSQL
+
+# sqlite_do runs a command in the attached sqlite database
+sqlite_do() {
+    log "Doing: $*\n"
+    printf "%s;\n" "$*" >&$TOSQL
 }
 
+# sqlite_get runs a command in the attached sqlite database
+# and returns the result in the variable named in $1
+sqlite_get() {
+    declare -n v=$1
+    shift
+    log "Doing: $*\n"
+    printf "%s;\n" "$*" >&$TOSQL
+    read -t 3 v <&$FROMSQL
+    log "Got: $v"
+}
+
+log "`date -Isecond`"
 read HWID
 sanitize HWID
 log "Got HWID=$HWID"
@@ -98,13 +115,13 @@ log "Got OTP=$OTP"
 
 # check whether this is a valid OTP; early, so that we don't
 # leak information to a totally unauthorized user.
-sqlite resp "select count(*) from devices where otp='$OTP'"
+sqlite_get resp "select count(*) from devices where otp='$OTP'"
 if [[ "$resp" -eq 0 ]]; then
     report_bad
 fi
 
 # check whether this hwid already registered
-sqlite resp "select count(*) from devices where hwid='$HWID'"
+sqlite_get resp "select count(*) from devices where hwid='$HWID'"
 if [[ "$resp" -ne 0 ]]; then
     die "hardware id $HWID already registered"
 fi
@@ -114,13 +131,13 @@ fi
 # so this is atomic and at most one process can succeed in claiming the
 # device record with the matching OTP.
 CLIENT_IP=${SSH_CLIENT/ */}
-sqlite resp "update devices set hwid='"$HWID"', ts_registered=strftime('%s',datetime()), ip_provisioned_from='"$CLIENT_IP"' where otp='"$OTP"' and hwid is null;"
+sqlite_do "update devices set hwid='"$HWID"', ts_registered=strftime('%s',datetime()), ip_provisioned_from='"$CLIENT_IP"' where otp='"$OTP"' and hwid is null;"
 
 # did we succeed in registering the device with this OTP?
-sqlite resp "select hwid from devices where otp='"$OTP"'"
+sqlite_get resp "select hwid from devices where otp='"$OTP"'"
 if [[ "$resp" != "$HWID" ]]; then
     # someone else got to the device first, do a query to suggest the index of the OTP to try next
-    sqlite resp "select min(id_in_fleet) from devices where hwid is null"
+    sqlite_get resp "select min(id_in_fleet) from devices where hwid is null"
     if [[ "$resp" != "" ]]; then
 	suggest_trying $resp
     else
@@ -129,17 +146,15 @@ if [[ "$resp" != "$HWID" ]]; then
 fi
 
 # registration successful - drop record from provisioning DB and return details to user
-sqlite _ignore_ "attach database '$PDB' as db1; delete from db1.devices where otp='$OTP'"
-sqlite user_pwd "select user_pwd from devices where hwid='$HWID'"
-sqlite root_pwd "select root_pwd from devices where hwid='$HWID'"
-sqlite hostname "select hostname from devices where hwid='$HWID'"
-sqlite fleetuser "select fleetuser from devices where hwid='$HWID'"
-sqlite tunnel_port "select tunnel_port from devices where hwid='$HWID'"
-sqlite srv_public_key "select server_public_key from devices where hwid='$HWID'"
-sqlite srv_private_key "select server_private_key from devices where hwid='$HWID'"
-sqlite dev_auth_key "select device_public_key from devices where hwid='$HWID'"
-sqlite zabbix_psk "select zabbix_psk from zabbix_fleet_psk where fleet='$FLEET'"
+sqlite_do "attach database '$PDB' as db1; delete from db1.devices where otp='$OTP'"
+sqlite_get user_pwd "select user_pwd from devices where hwid='$HWID'"
+sqlite_get root_pwd "select root_pwd from devices where hwid='$HWID'"
+sqlite_get hostname "select hostname from devices where hwid='$HWID'"
+sqlite_get fleetuser "select fleetuser from devices where hwid='$HWID'"
+sqlite_get tunnel_port "select tunnel_port from devices where hwid='$HWID'"
+sqlite_get srv_public_key "select server_public_key from devices where hwid='$HWID'"
+sqlite_get srv_private_key "select replace(server_private_key,char(10),',')||',' from devices where hwid='$HWID'"
+sqlite_get dev_auth_key "select device_public_key from devices where hwid='$HWID'"
+sqlite_get zabbix_psk "select zabbix_psk from zabbix_fleet_psk where fleet='$FLEET'"
 
-# replace EOL with , in private key file
-srv_private_key_compact=`echo "$srv_private_key" | tr '\n' ','`
-printf "Ok\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n" "$user_pwd" "$root_pwd" "$hostname" "$fleetuser" "$tunnel_port" "$srv_public_key" "$srv_private_key_compact" "$dev_auth_key" "$zabbix_psk"
+printf "Ok\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n" "$user_pwd" "$root_pwd" "$hostname" "$fleetuser" "$tunnel_port" "$srv_public_key" "$srv_private_key" "$dev_auth_key" "$zabbix_psk"
