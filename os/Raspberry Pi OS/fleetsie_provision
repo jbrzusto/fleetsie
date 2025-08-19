@@ -65,7 +65,7 @@ function fixup_ssh_perms () {
     # ensure authorized_keys permission is u=rw, og=r
     chmod u=rw,og=r $DIR/authorized_keys || true
     # ensure known_hosts permission is u=rw, og=r
-    chmod u=rw,og=r $DIR/authorized_keys || true
+    chmod u=rw,og=r $DIR/known_hosts || true
     # ensure config permission is u=rw, og=r
     chmod u=rw,og=r $DIR/config || true
     # ensure public keys are u=rw,og=r and private keys are u=rw,og=
