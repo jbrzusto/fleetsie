@@ -261,6 +261,7 @@ while [[ $NUM -gt 0 ]]; do
 done
 
 # update Main DB with registrations from Fleet DB
+# for now, we ignore hwid collisions
 DB="$MAINDB"
 sqlite_do "
 attach database '$FLEETDB' as 'db1';
@@ -273,4 +274,4 @@ from (
   from db1.devices
   where hwid is not null and fleet='$FLEETNAME') as reg
 where devices.id=reg.id and devices.hwid is null
-"
+" || true
