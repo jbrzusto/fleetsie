@@ -165,26 +165,30 @@ CREATE TABLE devices (
 CREATE UNIQUE INDEX devices_hwid ON devices(hwid);
 CREATE UNIQUE INDEX devices_fleet_otp_hwid ON devices(fleet, otp, hwid);
 CREATE UNIQUE INDEX devices_fleet_id_in_fleet ON devices(fleet, id_in_fleet);
-'
-    if [[ "$DB" == "$FLEETDB" ]]; then
-	sudo chown fleetsie:$FLEETUSER $DB
-	sudo chmod g+w $DB
-    else
-	# in the main DB, generate a new zabbix Pre-shared Key for the fleet
-	sqlite_do '
 CREATE TABLE IF NOT EXISTS zabbix_fleet_psk (
      fleet VARCHAR UNIQUE PRIMARY KEY NOT NULL,
      zabbix_psk VARCHAR NOT NULL
 );
 '
-	# generate a 256-bit zabbix PSK
-	FLEET_ZABBIX_PSK=`od -N 32 -w128 -t x1 -A none /dev/urandom | tr -d ' '`
+    if [[ "$DB" == "$FLEETDB" ]]; then
+	sudo chown fleetsie:$FLEETUSER $DB
+	sudo chmod g+w $DB
+    fi
+    # try grab the zabbix psk for the fleet
+    sqlite psk "select psk zabbix_fleet_psk where fleet = '$FLEETNAME'"
+    if [[ ! "$psk" ]]; then
+	if [[ ! "$FLEET_ZABBIX_PSK" ]]; then
+	    # generate a 256-bit zabbix PSK for the fleet, and add to appropriate config file
+	    FLEET_ZABBIX_PSK=`od -N 32 -w128 -t x1 -A none /dev/urandom | tr -d ' '`
+	    FLEET_PSK_FILE=/etc/zabbix/psk_${FLEETNAME}.txt
+	    echo "$FLEET_ZABBIX_PSK" | sudo tee $FLEET_PSK_FILE > /dev/null
+	    ZBX_SND_CNF=/etc/zabbix/zabbix_sender_${FLEETNAME}.conf
+	    cat /etc/zabbix/zabbix_sender.conf | sed -e "/^TLSPSKIdentity=/s/=.*/=${FLEETNAME}/;/^TLSPSKFile=/s/=.*/=${FLEET_PSK_FILE//\//\\\/}/" | sudo tee $ZBX_SND_CNF > /dev/null
+	fi
 	sqlite_do "INSERT INTO zabbix_fleet_psk(fleet, zabbix_psk) VALUES ('$FLEETNAME','$FLEET_ZABBIX_PSK');"
-	FLEET_PSK_FILE=/etc/zabbix/psk_${FLEETNAME}.txt
-	echo "$FLEET_ZABBIX_PSK" | sudo tee $FLEET_PSK_FILE > /dev/null
-	ZBX_SND_CNF=/etc/zabbix/zabbix_sender_${FLEETNAME}.conf
-	cat /etc/zabbix/zabbix_sender.conf | sed -e "/^TLSPSKIdentity=/s/=.*/=${FLEETNAME}/;/^TLSPSKFile=/s/=.*/=${FLEET_PSK_FILE//\//\\\/}/" | sudo tee $ZBX_SND_CNF > /dev/null
 	sudo chown fleetsie:fleetsie $DB
+    else
+	FLEET_ZABBIX_PSK="$psk"
     fi
 done
 
