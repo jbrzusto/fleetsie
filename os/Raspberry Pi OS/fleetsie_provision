@@ -519,8 +519,11 @@ while true; do
 	    Try)
 		read DEVNUM
 		# server suggests trying device with id_in_fleet = DEVNUM; delete devices with smaller id_in_fleet
-		# because the server is effectively telling us they have been claimed.
-		sqlite3 $DB "delete from devices where id_in_fleet < $DEVNUM;"
+		# because the server is effectively telling us they have been claimed.  Also, delete this OTP,
+		# in case server has suggested an earlier one which we don't have (could happen if a previous
+		# registration of a different device is manually undone, and OTP is available again).
+
+		sqlite3 $DB "delete from devices where id_in_fleet < $DEVNUM or otp='$OTP';"
 		info "server $FLEETHOST suggests trying device with id_in_fleet=$DEVNUM"
 		;;
 	    Error)
