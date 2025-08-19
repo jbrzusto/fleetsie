@@ -207,6 +207,7 @@ if [[ "$USB_PARTITION" != "" ]]; then
     # provisioning db
     PROVISIONING_DB="$FLEETSUBDIR/provisioning.sqlite"
     scp fleetsie@$FLEET_HOST:$PROVISIONING_DB "$PROVDIR/provisioning.sqlite"
+    cp "$PROVDIR/provisioning.sqlite" "$PROVDIR/backup_provisioning.sqlite"
 
     # fleet credentials, for sending OTP to obtain device credentials
     FLEET_CREDS="$FLEETSUBDIR/id_ed25519_provision_$FLEET_NAME"
