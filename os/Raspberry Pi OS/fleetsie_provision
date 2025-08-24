@@ -569,7 +569,7 @@ while true; do
 		echo "$SRVPUBKEY" > /home/${USER1000}/.ssh/fleetsie.pub
 		echo -n "$SRVPRIVKEY" | tr ',' '\n' > /home/${USER1000}/.ssh/fleetsie
 		echo "$FLEETKNOWNHOST" >> /home/${USER1000}/.known_hosts
-		echo "$DEVAUTHKEY" >> /home/{$USER1000}/.ssh/authorized_keys
+		echo "$DEVAUTHKEY" >> /home/${USER1000}/.ssh/authorized_keys
 		info "Configuring ssh for logging into fleetsie = $FLEETUSER@$FLEETHOST"
 		cat >> /home/${USER1000}/.ssh/config <<EOF
 Host fleetsie
