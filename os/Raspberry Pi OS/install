@@ -49,6 +49,7 @@ cp $FLEETSIE_DIR/sshd_config-dev $OPT/sshd_config
 cp $FLEETSIE_DIR/ssh_config-dev $OPT/ssh_config
 cp $FLEETSIE_DIR/zabbix_agent2.conf $OPT/
 cp $FLEETSIE_DIR/zabbix_sender.conf $OPT/
+cp $FLEETSIE_DIR/zabbix-agent2.service $OPT/
 cp $FLEETSIE_DIR/ssh_tunnel $OPT/
 cp $FLEETSIE_DIR/ssh-tunnel.service $OPT/
 
