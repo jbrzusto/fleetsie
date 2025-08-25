@@ -444,29 +444,31 @@ if ! sqlite3 < /dev/null; then
     fi
 fi
 
-# the following follows instructions from here:
-#  https://www.zabbix.com/download?zabbix=7.4&os_distribution=raspberry_pi_os&os_version=12&components=agent_2&db=&ws=
-#
-info "installing zabbix-agent2 and zabbix-sender"
-ZBXDEB=zabbix-release_latest_7.4+debian12_all.deb
-wget https://repo.zabbix.com/zabbix/7.4/release/raspbian/pool/main/z/zabbix-release/$ZBXDEB
-dpkg -i $ZBXDEB
-rm $ZBXDEB
-apt update
-apt install -y zabbix-agent2 zabbix-sender
-cp -f /opt/fleetsie/zabbix_agent2.conf /etc/zabbix
-cp -f /opt/fleetsie/zabbix_sender.conf /etc/zabbix
-mkdir /zabbix
-chown zabbix:zabbix /zabbix
-# we need a custom zabbix-agent2.service, because the one supplied by
-# zabbix doesn't create the required /run/zabbix directory
-src=/opt/fleetsie/zabbix-agent2.service
-dst=/lib/systemd/system/zabbix-agent2.service
-mv $src $dst
-chown root:root $dst
-chmod og-w $dst
-systemctl daemon-reload
-systemctl start zabbix-agent2
+if [[ ! -d /etc/zabbix ]]; then
+    # the following follows instructions from here:
+    #  https://www.zabbix.com/download?zabbix=7.4&os_distribution=raspberry_pi_os&os_version=12&components=agent_2&db=&ws=
+    #
+    info "installing zabbix-agent2 and zabbix-sender"
+    ZBXDEB=zabbix-release_latest_7.4+debian12_all.deb
+    wget https://repo.zabbix.com/zabbix/7.4/release/raspbian/pool/main/z/zabbix-release/$ZBXDEB
+    dpkg -i $ZBXDEB
+    rm $ZBXDEB
+    apt update
+    apt install -y zabbix-agent2 zabbix-sender
+    cp -f /opt/fleetsie/zabbix_agent2.conf /etc/zabbix
+    cp -f /opt/fleetsie/zabbix_sender.conf /etc/zabbix
+    mkdir /zabbix
+    chown zabbix:zabbix /zabbix
+    # we need a custom zabbix-agent2.service, because the one supplied by
+    # zabbix doesn't create the required /run/zabbix directory
+    src=/opt/fleetsie/zabbix-agent2.service
+    dst=/lib/systemd/system/zabbix-agent2.service
+    mv $src $dst
+    chown root:root $dst
+    chmod og-w $dst
+    systemctl daemon-reload
+    systemctl start zabbix-agent2
+fi
 
 info "looking for fleet ssh keys in fleet.txt"
 
