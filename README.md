@@ -202,6 +202,10 @@ This can be useful for testing the provisioning code, by avoiding having to comp
 - the script must be called `setup` and must be in a top-level directory called `fleetsie` on the USB disk
 - after switching to the top-level `fleetsie` directory on the disk, the script is run as root
 - if the script run is successful, `fleetsie-provision.service` will disable itself.
+- when the device registers, the fleet server will supply an extra
+file of (presumably) secrets; this is saved as
+`/opt/fleetsie/fleet_extra`, and can be used by custom setup scripts
+(see `custom_post` below)
 
 ## ssh-tunnel service
 

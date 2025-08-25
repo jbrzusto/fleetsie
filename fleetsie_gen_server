@@ -160,7 +160,8 @@ CREATE TABLE devices (
      device_private_key VARCHAR NOT NULL,     -- private key which can be used to login as user 1000 on device
      server_public_key VARCHAR NOT NULL,      -- public key which device will use to ssh into fleet server
      server_private_key VARCHAR NOT NULL,     -- private key which device will use to ssh into fleet server
-     ip_provisioned_from VARCHAR              -- IP address from which request to provision this device originated
+     ip_provisioned_from VARCHAR,             -- IP address from which request to provision this device originated
+     zabbix_psk VARCHAR                       -- pre-shared-key used with zabbix to uniquely authorized this device
  );
 CREATE UNIQUE INDEX devices_hwid ON devices(hwid);
 CREATE UNIQUE INDEX devices_fleet_otp_hwid ON devices(fleet, otp, hwid);
@@ -168,6 +169,10 @@ CREATE UNIQUE INDEX devices_fleet_id_in_fleet ON devices(fleet, id_in_fleet);
 CREATE TABLE IF NOT EXISTS zabbix_fleet_psk (
      fleet VARCHAR UNIQUE PRIMARY KEY NOT NULL,
      zabbix_psk VARCHAR NOT NULL
+);
+CREATE TABLE IF NOT EXISTS fleet_extra (
+     fleet VARCHAR UNIQUE PRIMARY KEY NOT NULL,
+     extra VARCHAR NOT NULL
 );
 '
     if [[ "$DB" == "$FLEETDB" ]]; then
@@ -247,10 +252,11 @@ while [[ $NUM -gt 0 ]]; do
     DEVPRIVKEY=`sudo cat $dev_ssh_key_file`
     DEVPUBKEY=`sudo cat ${dev_ssh_key_file}.pub`
     OTP=`od -N 128 -w256 -t x1 -A none /dev/urandom | tr -d ' '`
+    ZABBIXPSK=`od -N 32 -w128 -t x1 -A none /dev/urandom | tr -d ' '`
     DB="$MAINDB"
-    sqlite_do "insert into devices(id, fleet, id_in_fleet, fleetuser, hostname, otp, ts_generated, tunnel_port, device_public_key, device_private_key, server_public_key, server_private_key) values($next_id, '$FLEETNAME', $next_id_in_fleet, '$FLEETUSER', '$HOSTNAME', '$OTP', strftime('%s',datetime()), '$next_port','$DEVPUBKEY', '$DEVPRIVKEY', '$SRVPUBKEY', '$SRVPRIVKEY');"
+    sqlite_do "insert into devices(id, fleet, id_in_fleet, fleetuser, hostname, otp, ts_generated, tunnel_port, device_public_key, device_private_key, server_public_key, server_private_key, zabbix_psk) values($next_id, '$FLEETNAME', $next_id_in_fleet, '$FLEETUSER', '$HOSTNAME', '$OTP', strftime('%s',datetime()), '$next_port','$DEVPUBKEY', '$DEVPRIVKEY', '$SRVPUBKEY', '$SRVPRIVKEY', '$ZABBIXPSK');"
     DB="$FLEETDB"
-    sqlite_do "insert into devices(id, fleet, id_in_fleet, fleetuser, hostname, otp, ts_generated, tunnel_port, device_public_key, device_private_key, server_public_key, server_private_key) values($next_id, '$FLEETNAME', $next_id_in_fleet, '$FLEETUSER', '$HOSTNAME', '$OTP',  strftime('%s',datetime()), '$next_port','$DEVPUBKEY', '$DEVPRIVKEY', '$SRVPUBKEY', '$SRVPRIVKEY');"
+    sqlite_do "insert into devices(id, fleet, id_in_fleet, fleetuser, hostname, otp, ts_generated, tunnel_port, device_public_key, device_private_key, server_public_key, server_private_key, zabbix_psk) values($next_id, '$FLEETNAME', $next_id_in_fleet, '$FLEETUSER', '$HOSTNAME', '$OTP',  strftime('%s',datetime()), '$next_port','$DEVPUBKEY', '$DEVPRIVKEY', '$SRVPUBKEY', '$SRVPRIVKEY', '$ZABBIXPSK');"
     DB="$PROVISIONINGDB"
     sqlite_do "insert into devices(id_in_fleet, otp) values($next_id_in_fleet, '$OTP');"
     next_id_in_fleet=$(( $next_id_in_fleet + 1 ))

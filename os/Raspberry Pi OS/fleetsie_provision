@@ -543,7 +543,7 @@ while true; do
                 fatal "server $FLEETHOST reports there are no available devices allocated to the $FLEETNAME fleet.  Contact an administrator to fix this."
                 ;;
 	    Ok)
-		if ! read USERPWD || ! read ROOTPWD || ! read HOSTNAME || ! read FLEETUSER || ! read PORT || ! read SRVPUBKEY || ! read SRVPRIVKEY || ! read DEVAUTHKEY || ! read ZABBIXPSK; then
+		if ! read USERPWD || ! read ROOTPWD || ! read HOSTNAME || ! read FLEETUSER || ! read PORT || ! read SRVPUBKEY || ! read SRVPRIVKEY || ! read DEVAUTHKEY || ! read ZABBIXPSK || ! read FLEET_EXTRA; then
 		    fatal "server $FLEETHOST gave bad reply: `cat $REPLY_FILE`"
 		fi
 		info "Successfully claimed!"
@@ -592,6 +592,7 @@ EOF
 		if ! systemctl enable --now ssh-tunnel 2>/tmp/error.txt; then
 		    warning "there was a problem starting the ssh-tunnel service: `cat /tmp/error.txt`"
 		fi
+		echo "$FLEET_EXTRA" > /opt/fleetsie/fleet_extra
 		info "Removing entry with this OTP from devices table"
 		sqlite3 $DB "delete from devices where otp='$OTP'"
 		break
