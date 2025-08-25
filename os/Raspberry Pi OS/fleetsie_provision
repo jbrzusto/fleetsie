@@ -85,12 +85,14 @@ GRN_CTRL=/sys/class/leds/ACT/trigger
 
 # init_leds should be called once before calling any other LED
 # functions It sets up file descriptors so we don't keep opening the
-# LED devices.
+# LED devices. It also sets the initial blinking pattern to a heartbeat.
 function init_leds() {
     exec {RED_LED_FD}>$RED_LED
     exec {GRN_LED_FD}>$GRN_LED
     exec {RED_LED_CTRL_FD}>$RED_CTRL
     exec {GRN_LED_CTRL_FD}>$GRN_CTRL
+    printf "heartbeat\n" >&$RED_LED_CTRL_FD
+    printf "heartbeat\n" >&$GRN_LED_CTRL_FD
 }
 
 # claim_leds tries to disable other processes from controlling the
@@ -122,9 +124,7 @@ function blink_leds_for() {
 # in tandem
 function done_prov() {
     claim_leds
-    while true; do
-	blink_leds_for 1 1 0.3 0.3
-    done
+    set_leds_for 1 1 1000000
 }
 
 # blink red LED in morse code 'dot'
