@@ -115,6 +115,7 @@ if ! id -u $FLEETUSER 2> /dev/null ; then
     # place copies in ~/fleetsie/.ssh/ for convenience
     sudo cp $PROV_KEY_FILE ${PROV_KEY_FILE}.pub $FLEETSUBDIR
     sudo chown fleetsie:fleetsie_$FLEETNAME $FLEETSUBDIR/`basename $PROV_KEY_FILE`*
+
     # build the authorized_keys entry for the fleet credentials
     FLEETPUBKEY=`sudo cat ${PROV_KEY_FILE}.pub`
     AUTHKEYPREFIX="command=\"/home/fleetsie/fleetsie_auth\",restrict,pty,environment=\"FLEET=$FLEETNAME\""
