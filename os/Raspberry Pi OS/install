@@ -31,7 +31,7 @@ EOF
 fi
 
 unzip -j -o -d $BOOTFS $FIRMWARE_ARCH "firmware-stable/boot/start*.elf" "firmware-stable/boot/fixup*.dat"
-rm $FIRMWARE_ARCH
+# rm $FIRMWARE_ARCH
 
 DST=$SYSTEMD/fleetsie-provision.service
 sudo cp ./fleetsie-provision.service $DST
