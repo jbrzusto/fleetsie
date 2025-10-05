@@ -459,15 +459,6 @@ if [[ ! -d /etc/zabbix ]]; then
     cp -f /opt/fleetsie/zabbix_sender.conf /etc/zabbix
     mkdir /zabbix
     chown zabbix:zabbix /zabbix
-    # we need a custom zabbix-agent2.service, because the one supplied by
-    # zabbix doesn't create the required /run/zabbix directory
-    src=/opt/fleetsie/zabbix-agent2.service
-    dst=/lib/systemd/system/zabbix-agent2.service
-    mv $src $dst
-    chown root:root $dst
-    chmod og-w $dst
-    systemctl daemon-reload
-    systemctl start zabbix-agent2
 fi
 
 info "looking for fleet ssh keys in fleet.txt"
