@@ -437,11 +437,22 @@ info "waiting for system clock to be synchronized to network time"
 
 systemctl restart systemd-time-wait-sync.service
 
-if ! sqlite3 < /dev/null; then
+if ! sqlite3 < /dev/null 2>/dev/null; then
     info "updating package lists and installing sqlite3"
-    if ! apt update || ! apt install sqlite3 ; then
+    # allow 1 minute for the network to stabilize (?)
+    i=0
+    n=6
+    while $(( $i < $n )); do
+	if apt update && apt install -y sqlite3 2>>$LOGFILE; then
+	    break
+	fi
+	i=$(( $i + 1 ))
+	sleep 10
+    done
+    if $(( $i >= $n )); then
 	fatal "unable to install sqlite3"
     fi
+    info "sqlite3 installed"
 fi
 
 if [[ ! -d /etc/zabbix ]]; then
@@ -505,7 +516,7 @@ while true; do
     if [[ "$OTP" == "" ]]; then
 	fatal "no devices left in $DB - contact an administrator for more"
     fi
-    info " - trying otp=${OTP:0:16}..."
+    info " - trying otp=${OTP:0:4}..."
     if !  printf "%s\n%s\n" "$HWID" "$OTP" | \
 	    ssh -T -oStrictHostKeyChecking=true -i /root/.ssh/$PRIVKEY fleetsie_$FLEETNAME@$FLEETHOST \
 		> $REPLY_FILE 2> $ERROR_FILE; then
@@ -541,8 +552,8 @@ while true; do
 		fi
 		info "Successfully claimed!"
 		info "Setting hostname to $HOSTNAME"
-		echo "$HOSTNAME" > /etc/hostname
-		hostname $HOSTNAME
+		hostnamectl hostname "$HOSTNAME"
+		systemctl restart bluetooth
 		if [[ "$USERPWD" ]]; then
 		    info "Setting server-supplied user password"
 		    if ! echo "${USER1000}:$USERPWD" | chpasswd > /tmp/error.txt 2>&1; then
