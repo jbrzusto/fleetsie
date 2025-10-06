@@ -472,7 +472,8 @@ if [[ ! -d /etc/zabbix ]]; then
     cp -f /opt/fleetsie/zabbix_agent2.conf /etc/zabbix
     cp -f /opt/fleetsie/zabbix_sender.conf /etc/zabbix
     mkdir /zabbix
-    chown zabbix:zabbix /zabbix
+    mkdir /run/zabbix
+    chown zabbix:zabbix /zabbix /run/zabbix
 fi
 
 info "looking for fleet ssh keys in fleet.txt"
