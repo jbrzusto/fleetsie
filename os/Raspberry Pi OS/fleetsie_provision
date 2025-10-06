@@ -467,8 +467,8 @@ if [[ ! -d /etc/zabbix ]]; then
     wget https://repo.zabbix.com/zabbix/7.4/release/raspbian/pool/main/z/zabbix-release/$ZBXDEB
     dpkg -i $ZBXDEB
     rm $ZBXDEB
-    apt update
-    apt install -y zabbix-agent2 zabbix-sender
+    apt-get update
+    apt-get install -y zabbix-agent2 zabbix-sender
     cp -f /opt/fleetsie/zabbix_agent2.conf /etc/zabbix
     cp -f /opt/fleetsie/zabbix_sender.conf /etc/zabbix
     mkdir /zabbix
