@@ -437,19 +437,22 @@ info "waiting for system clock to be synchronized to network time"
 
 systemctl restart systemd-time-wait-sync.service
 
-if ! sqlite3 < /dev/null 2>/dev/null; then
+if [[ "`which sqlite3`" == "" ]]; then
     info "updating package lists and installing sqlite3"
     # allow 1 minute for the network to stabilize (?)
     i=0
     n=6
-    while $(( $i < $n )); do
-	if apt update && apt install -y sqlite3 2>>$LOGFILE; then
+    while true; do
+	if [[ $i -ge $n ]]; then
+	    break
+	fi
+	if apt-get update && apt-get install -y sqlite3 >>$LOGFILE 2>&1; then
 	    break
 	fi
 	i=$(( $i + 1 ))
 	sleep 10
     done
-    if $(( $i >= $n )); then
+    if [[ "`which sqlite3`" == "" ]]; then
 	fatal "unable to install sqlite3"
     fi
     info "sqlite3 installed"
