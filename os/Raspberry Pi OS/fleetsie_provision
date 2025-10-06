@@ -557,7 +557,9 @@ while true; do
 		info "Successfully claimed!"
 		info "Setting hostname to $HOSTNAME"
 		hostnamectl hostname "$HOSTNAME"
+		systemctl restart avahi-daemon
 		systemctl restart bluetooth
+		systemctl restart bluetooth-autopair
 		if [[ "$USERPWD" ]]; then
 		    info "Setting server-supplied user password"
 		    if ! echo "${USER1000}:$USERPWD" | chpasswd > /tmp/error.txt 2>&1; then
